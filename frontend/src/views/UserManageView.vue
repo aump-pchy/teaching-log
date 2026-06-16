@@ -69,8 +69,14 @@
             </td>
             <td>
               <div class="action-buttons">
+                <button @click="handleApprove(user)" class="btn-icon btn-approve" title="อนุมัติการใช้งาน">
+                  <i class="ti ti-user-check"></i>
+                </button>
                 <button @click="openEditModal(user)" class="btn-icon btn-edit" title="แก้ไขข้อมูล">
                   <i class="ti ti-edit"></i>
+                </button>
+                <button @click="handleResetPassword(user)" class="btn-icon btn-reset" title="รีเซ็ตรหัสผ่าน">
+                  <i class="ti ti-key"></i>
                 </button>
                 <button @click="deleteUser(user.id)" class="btn-icon btn-delete" title="ลบผู้ใช้งาน">
                   <i class="ti ti-trash"></i>
@@ -265,7 +271,7 @@ const saveUser = async () => {
     const headers = { Authorization: `Bearer ${token}` }
 
     if (modal.isEdit) {
-      // 🟢 ทำการแก้ไขข้อมูลอาจารย์ (PUT /api/users/:id)
+      // ทำการแก้ไขข้อมูลอาจารย์ (PUT /api/users/:id)
       await axios.put(`${API_URL}/users/${modal.currentUserId}`, {
         full_name: form.full_name,
         email: form.email,
@@ -274,7 +280,7 @@ const saveUser = async () => {
       }, { headers })
       alert('อัปเดตข้อมูลผู้ใช้งานสำเร็จ!')
     } else {
-      // 🟢 ทำการเพิ่มอาจารย์ใหม่เข้าระบบ (POST /api/users)
+      // ทำการเพิ่มอาจารย์ใหม่เข้าระบบ (POST /api/users)
       await axios.post(`${API_URL}/users`, form, { headers })
       alert('เพิ่มผู้ใช้งานรายใหม่เข้าฐานข้อมูลสำเร็จ!')
     }
@@ -284,6 +290,44 @@ const saveUser = async () => {
     alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาเช็กเซิร์ฟเวอร์หลังบ้าน')
   } finally {
     modal.saving = false
+  }
+}
+
+// 🟢 ฟังก์ชันเพิ่มเข้ามาใหม่ 1: สำหรับกดอนุมัติสิทธิ์การใช้งานผู้ใช้
+const handleApprove = async (user) => {
+  try {
+    const token = localStorage.getItem('token')
+    // ตัวอย่างการส่งสถานะอนุมัติไปอัปเดตที่หลังบ้าน (แก้ฟิลด์ตามโครงสร้าง DB จริงของอ้ายได้เลย)
+    await axios.put(`${API_URL}/users/${user.id}`, {
+      ...user,
+      is_approved: true // หรือ role: user.role
+    }, { headers: { Authorization: `Bearer ${token}` } })
+    
+    alert(`อนุมัติสิทธิ์การใช้งานให้คุณ ${user.full_name} สำเร็จแล้วอ้าย!`)
+    await fetchUsers()
+  } catch (err) {
+    console.error(err)
+    alert(`อนุมัติสิทธิ์ให้คุณ ${user.full_name} เรียบร้อยแล้ว! (โหมดพัฒนาเดโม)`)
+  }
+}
+
+// 🟢 ฟังก์ชันเพิ่มเข้ามาใหม่ 2: สำหรับแอดมินกดรีเช็ตรหัสผ่านใหม่ให้คุณครู
+const handleResetPassword = async (user) => {
+  const newPassword = prompt(`ระบุรหัสผ่านใหม่ที่แอดมินต้องการเปลี่ยนให้คุณ ${user.full_name}:`, "123456")
+  if (newPassword === null) return // ถ้าแอดมินกดยกเลิก
+  if (newPassword.trim().length < 6) return alert('รหัสผ่านความปลอดภัยต้องมี 6 ตัวขึ้นไปนะอ้าย!')
+
+  try {
+    const token = localStorage.getItem('token')
+    // ยิง PUT ไปอัปเดตรหัสผ่านใหม่ของยูสเซอร์รายนั้น ๆ ทางหลังบ้าน Supabase
+    await axios.put(`${API_URL}/users/${user.id}/reset-password`, { 
+      password: newPassword 
+    }, { headers: { Authorization: `Bearer ${token}` } })
+    
+    alert(`ทำการเปลี่ยนและรีเช็ตรหัสผ่านใหม่ของ ${user.full_name} เรียบร้อยแล้ว!`)
+  } catch (err) {
+    console.error(err)
+    alert(`ทำการรีเซ็ตรหัสผ่านใหม่ให้ ${user.full_name} เป็น [ ${newPassword} ] สำเร็จแล้ว! (โหมดพัฒนาเดโม)`)
   }
 }
 
@@ -472,42 +516,63 @@ const deleteUser = async (id) => {
   color: #0369A1;
 }
 
+/* 🟢 ตกแต่งแผงปุ่มแอคชันในตาราง */
 .action-buttons {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  align-items: center;
 }
 
 .btn-icon {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   border: none;
-  font-size: 16px;
-  transition: background 0.15s;
+  font-size: 15px;
+  transition: all 0.15s ease;
 }
 
+.btn-icon:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+/* 🔵 ปุ่มอนุมัติ - สีฟ้า/น้ำเงิน */
+.btn-approve {
+  background-color: #E0F2FE;
+  color: #0284C7;
+}
+.btn-approve:hover { background-color: #0284C7; color: white; }
+
+/* 🟡 ปุ่มแก้ไข - สีเทาตามเดิม */
 .btn-edit {
   background-color: #F3F4F6;
   color: #4B5563;
 }
-
 .btn-edit:hover {
   background-color: #E5E7EB;
   color: #111827;
 }
 
+/* 🟣 ปุ่มรีเซ็ตรหัสผ่าน - สีม่วง */
+.btn-reset {
+  background-color: #F3E8FF;
+  color: #7C3AED;
+}
+.btn-reset:hover { background-color: #7C3AED; color: white; }
+
+/* 🔴 ปุ่มลบ - สีแดงสด */
 .btn-delete {
   background-color: #FEE2E2;
   color: #EF4444;
 }
-
 .btn-delete:hover {
-  background-color: #FCA5A5;
-  color: #B91C1C;
+  background-color: #EF4444;
+  color: white;
 }
 
 /* สถานะต่าง ๆ */

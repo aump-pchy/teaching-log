@@ -4,6 +4,8 @@ import { useAuthStore } from '../stores/auth'
 const routes = [
   // คนที่ 1: Auth
   { path: '/login', component: () => import('../views/LoginView.vue') },
+  // 🟢 เพิ่มเส้นทางหน้าสมัครสมาชิก (Register) ตรงนี้ครับอ้าย
+  { path: '/register', component: () => import('../views/registerView.vue') }, 
   { path: '/admin/users', component: () => import('../views/UserManageView.vue'), meta: { requiresAuth: true, adminOnly: true } },
 
   // คนที่ 2: Log Form
