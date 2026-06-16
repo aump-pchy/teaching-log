@@ -17,7 +17,7 @@ const routes = [
   { path: '/logs/:id', component: () => import('../views/LogDetailView.vue'), meta: { requiresAuth: true } },
 
   // default
-  { path: '/', redirect: '/logs' },
+  { path: '/', component: () => import('../views/LandingView.vue') },
 ]
 
 const router = createRouter({
