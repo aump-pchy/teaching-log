@@ -5,7 +5,12 @@ export default {
     './src/**/*.{vue,js,ts}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sarabun: ['Sarabun', 'sans-serif'],
+      },
+    },
   },
   plugins: [],
 }
+
