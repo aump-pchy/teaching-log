@@ -1,0 +1,54 @@
+const express = require('express')
+const router = express.Router()
+const multer = require('multer')
+const { authMiddleware } = require('../middleware/auth')
+const {
+  getAllLogs,
+  getLogById,
+  createLog,
+  updateLog,
+  deleteLog,
+  uploadImage,
+  getImages,
+  deleteImage
+} = require('../controllers/logController')
+
+// multer — เก็บไฟล์ใน memory ก่อน แล้วค่อย upload ไป Supabase Storage
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true)
+    } else {
+      cb(new Error('อนุญาตเฉพาะไฟล์ภาพ JPG, PNG, WEBP เท่านั้น'))
+    }
+  }
+})
+
+// GET  /api/logs          (admin=ทุกคน, teacher=ตัวเอง, ?dept=IT)
+router.get('/', authMiddleware, getAllLogs)
+
+// GET  /api/logs/:id
+router.get('/:id', authMiddleware, getLogById)
+
+// POST /api/logs
+router.post('/', authMiddleware, createLog)
+
+// PUT  /api/logs/:id
+router.put('/:id', authMiddleware, updateLog)
+
+// DELETE /api/logs/:id
+router.delete('/:id', authMiddleware, deleteLog)
+
+// POST /api/logs/:id/images
+router.post('/:id/images', authMiddleware, upload.single('file'), uploadImage)
+
+// GET  /api/logs/:id/images
+router.get('/:id/images', authMiddleware, getImages)
+
+// DELETE /api/logs/:id/images/:imgId
+router.delete('/:id/images/:imgId', authMiddleware, deleteImage)
+
+module.exports = router
