@@ -102,62 +102,56 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import axios from 'axios' // ยิงเรียกข้อมูลจากหลังบ้าน
 
-// 1. ข้อมูลสมมุติ (Mock Data)
-const mockLogs = ref([
-  {
-    id: 1,
-    week: 1,
-    subject_code: "30204-2001",
-    subject_name: "โครงสร้างข้อมูลและอัลกอริทึม",
-    teacher_name: "สมชาย สายโค้ด",
-    department_name: "แผนกวิชาคอมพิวเตอร์ธุรกิจ/เทคโนโลยีสารสนเทศ"
-  },
-  {
-    id: 2,
-    week: 2,
-    subject_code: "30204-2001",
-    subject_name: "โครงสร้างข้อมูลและอัลกอริทึม",
-    teacher_name: "สมชาย สายโค้ด",
-    department_name: "แผนกวิชาคอมพิวเตอร์ธุรกิจ/เทคโนโลยีสารสนเทศ"
-  },
-  {
-    id: 3,
-    week: 1,
-    subject_code: "30105-2104",
-    subject_name: "การวิเคราะห์วงจรอิเล็กทรอนิกส์",
-    teacher_name: "อัญชลี เรียนดี",
-    department_name: "แผนกวิชาอิเล็กทรอนิกส์"
-  },
-  {
-    id: 4,
-    week: 1,
-    subject_code: "30127-2002",
-    subject_name: "ระบบควบคุมอัตโนมัติในงานอุตสาหกรรม",
-    teacher_name: "วิโรจน์ ยาบุษดี",
-    department_name: "แผนกวิชาช่างไฟฟ้ากำลัง"
-  }
-])
+// 1. เปลี่ยนตัวแปรหลักให้กลายเป็นกล่องเปล่า เพื่อรอรับข้อมูลจริงจาก Supabase
+const mockLogs = ref([])
 
-// 2. รายชื่อแผนกสำหรับตัวกรอง
-const departments = [
-  "แผนกวิชาคอมพิวเตอร์ธุรกิจ/เทคโนโลยีสารสนเทศ",
-  "แผนกวิชาอิเล็กทรอนิกส์",
-  "แผนกวิชาช่างไฟฟ้ากำลัง"
-]
-
-// 3. State เก็บค่าแผนกที่ถูกเลือก
+// 2. รายชื่อโค้ดแผนกวิชาสำหรับตัวกรอง (อิงตามฟิลด์ code ในตาราง Supabase ของจริง)
+const departments = ["IT", "AI", "EE", "ME"]
 const selectedDept = ref("")
 
-// 4. Computed สำหรับกรองข้อมูลในตารางอัตโนมัติ
-const filteredLogs = computed(() => {
-  if (selectedDept.value === "") return mockLogs.value
-  return mockLogs.value.filter(log => log.department_name === selectedDept.value)
+// 3. ฟังก์ชันสำหรับยิงไปเอาข้อมูลรายการบันทึกการสอนจากหลังบ้าน
+const fetchLogs = async () => {
+  try {
+    // ตรวจสอบเงื่อนไข: ถ้าเลือกแผนกวิชา ให้ส่ง ?dept= ไปด้วยตามเงื่อนไขของหนู
+    const url = selectedDept.value 
+      ? `/api/logs?dept=${selectedDept.value}` 
+      : '/api/logs'
+      
+    // ดึงรหัสความปลอดภัย (JWT Token) ที่เก็บไว้ในเครื่องหลังจากเข้าสู่ระบบ
+    const token = localStorage.getItem('token') 
+    
+    // ยิง Request ไปเรียกข้อมูลหลังบ้านพร้อมแนบสิทธิ์การเข้าถึง
+    const response = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    
+    // เอาข้อมูลจริงมาใส่ในตัวแปรตาราง
+    mockLogs.value = response.data
+  } catch (error) {
+    console.error('ดึงข้อมูลรายการสอนไม่สำเร็จ:', error)
+  }
+}
+
+// 4. สั่งให้ฟังก์ชันทำงานทันทีที่เปิดเข้าหน้านี้มา (หน้าเว็บเปิดปุ๊บ ข้อมูลเด้งปั๊บ)
+onMounted(() => {
+  fetchLogs()
 })
 
-// ฟังก์ชันปุ่มกดดูรายละเอียด
+// 5. เมื่อหนูกดคลิกเปลี่ยนแผนกวิชาในหน้าเว็บ ให้สั่งวิ่งไปดึงข้อมูลใหม่ตามตัวกรองทันที
+watch(selectedDept, () => {
+  fetchLogs()
+})
+
+// 6. ปล่อยฟังก์ชันนี้ไว้ทำงานร่วมกับตาราง Vue เดิม
+const filteredLogs = computed(() => {
+  return mockLogs.value
+})
+
+// ปุ่มกดดูรายละเอียด
 const viewDetail = (id) => {
-  alert(`ดูรายละเอียด ID: ${id} (รอเชื่อมต่อหน้า LogDetailView)`)
+  alert(`ดูรายละเอียด ID: ${id} (รอระบบของเพื่อนคนที่ 4 เชื่อมต่อ)`)
 }
 </script>
