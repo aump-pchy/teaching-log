@@ -6,11 +6,69 @@ const supabase = require('../db/supabase')
  * - teacher → เห็นแค่ log ตัวเอง
  */
 async function getAllLogs(req, res) {
-  // TODO: 1. ดู role จาก req.user.role
-  // TODO: 2. ถ้า teacher → filter where user_id = req.user.id
-  // TODO: 3. ถ้า admin และมี query ?dept=XX → join users+departments แล้ว filter
-  // TODO: 4. query teaching_logs พร้อม join users (full_name) และ departments (name)
-  // TODO: 5. return array of logs
+  try {
+    // 1. แกะดูสิทธิ์ผู้ใช้จาก req.user ที่ส่งมาจากระบบล็อกอิน
+    const { id: userId, role: userRole } = req.user; 
+    
+    // ดึงค่า query ตัวกรองรหัสแผนก เช่น ?dept=IT, ?dept=EE
+    const { dept } = req.query; 
+
+    // 2. ดึงข้อมูลตาราง teaching_logs พร้อม Join ตาราง users และ departments
+    // อิงตามฟิลด์ full_name, department_id และ code, name
+    let query = supabase
+      .from('teaching_logs')
+      .select(`
+        *,
+        users!inner (
+          id,
+          full_name,
+          department_id,
+          departments!inner (
+            id,
+            code,
+            name
+          )
+        )
+      `);
+
+    // 3. เงื่อนไขสำหรับคุณครู (Teacher) -> ดึงเฉพาะงานที่มี user_id ตรงกับตัวเอง
+    if (userRole === 'teacher') {
+      query = query.eq('user_id', userId);
+    }
+
+    // 4. เงื่อนไขสำหรับแอดมิน (Admin) -> ถ้ามีการแนบรหัสแผนกมา ให้กรองตามฟิลด์ code ในตาราง departments
+    if (userRole === 'admin' && dept) {
+      // ค้นหาเจาะลึกผ่านตารางสัมพันธ์ users -> departments -> ฟิลด์ code
+      query = query.eq('users.departments.code', dept);
+    }
+
+    // 5. สั่งให้คำสั่งทำงานดึงข้อมูลจริงจาก Supabase
+    const { data: logs, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    // 6. แปลงร่างข้อมูล (Formatting) ให้อยู่ในโครงสร้างที่หน้าบ้าน Vue 3 พร้อมใช้งานได้ทันที
+    const formattedLogs = logs.map(log => ({
+      id: log.id,
+      week: log.week,
+      subject_code: log.subject_code,
+      subject_name: log.subject_name,
+      // ดึงฟิลด์ full_name จากตาราง users
+      teacher_name: log.users ? log.users.full_name : 'ไม่ระบุชื่อครู',
+      // ดึงฟิลด์ name จากตาราง departments
+      department_name: (log.users && log.users.departments) ? log.users.departments.name : 'ไม่ระบุแผนกวิชา'
+    }));
+
+    // 7. ส่ง Array ข้อมูลกลับสำเร็จเป็น JSON
+    return res.status(200).json(formattedLogs);
+
+  } catch (error) {
+    console.error('Error in getAllLogs:', error);
+    // ส่ง Error Format ตามสัญญากลุ่ม
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการบันทึกการสอน' });
+  }
 }
 
 /**
