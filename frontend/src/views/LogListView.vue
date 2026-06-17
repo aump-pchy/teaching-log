@@ -106,7 +106,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios' // ยิงเรียกข้อมูลจากหลังบ้าน
 
 // 1. เปลี่ยนตัวแปรหลักให้กลายเป็นกล่องเปล่า เพื่อรอรับข้อมูลจริงจาก Supabase
-const mockLogs = ref([])
+const rawLogs = ref([])
 
 // 2. รายชื่อโค้ดแผนกวิชาสำหรับตัวกรอง (อิงตามฟิลด์ code ในตาราง Supabase ของจริง)
 const departments = ["IT", "AI", "EE", "ME"]
@@ -129,7 +129,7 @@ const fetchLogs = async () => {
     })
     
     // เอาข้อมูลจริงมาใส่ในตัวแปรตาราง
-    mockLogs.value = response.data
+    rawLogs.value = response.data
   } catch (error) {
     console.error('ดึงข้อมูลรายการสอนไม่สำเร็จ:', error)
   }
@@ -140,14 +140,14 @@ onMounted(() => {
   fetchLogs()
 })
 
-// 5. เมื่อหนูกดคลิกเปลี่ยนแผนกวิชาในหน้าเว็บ ให้สั่งวิ่งไปดึงข้อมูลใหม่ตามตัวกรองทันที
+// 5. เมื่อกดคลิกเปลี่ยนแผนกวิชาในหน้าเว็บ ให้สั่งวิ่งไปดึงข้อมูลใหม่ตามตัวกรองทันที
 watch(selectedDept, () => {
   fetchLogs()
 })
 
 // 6. ปล่อยฟังก์ชันนี้ไว้ทำงานร่วมกับตาราง Vue เดิม
 const filteredLogs = computed(() => {
-  return mockLogs.value
+  return rawLogs.value
 })
 
 // ปุ่มกดดูรายละเอียด
