@@ -1,5 +1,5 @@
 const supabase = require('../db/supabase')
-const bcrypt = require('bcryptjs') // 🟢 เปลี่ยนเป็น bcryptjs เรียบร้อยครับ
+const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 
 /**
@@ -18,10 +18,10 @@ async function login(req, res) {
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
-      .eq('email', email)
+      .eq('email', email.trim())
       .single()
 
-    // ถ้าไม่เจอ user หรือเกิด error → ส่งกลับ 400
+    // ถ้าไม่เจอ user หรือเกิด error
     if (error || !user) {
       return res.status(400).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' })
     }
@@ -40,7 +40,7 @@ async function login(req, res) {
       { expiresIn: '8h' }
     )
 
-    // ลบพาสเวิร์ดทิ้งเพื่อความปลอดภัย
+    // ลบพาสเวิร์ดทิ้งก่อนส่งกลับเพื่อความปลอดภัย
     delete user.password_hash 
 
     return res.status(200).json({
