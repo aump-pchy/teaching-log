@@ -4,9 +4,16 @@ import { useAuthStore } from '../stores/auth'
 const routes = [
   // คนที่ 1: Auth
   { path: '/login', component: () => import('../views/LoginView.vue') },
-  // 🟢 เพิ่มเส้นทางหน้าสมัครสมาชิก (Register) ตรงนี้ครับอ้าย
+  // 🟢 เส้นทางหน้าสมัครสมาชิก (Register)
   { path: '/register', component: () => import('../views/registerView.vue') }, 
+  
+  // 🔑 🛠️ เพิ่มหน้าลืมรหัสผ่าน (ForgotPassword) ตรงนี้เลยครับอ้าย!
+  { path: '/forgot-password', component: () => import('../views/ForgotPasswordView.vue') },
+
   { path: '/admin/users', component: () => import('../views/UserManageView.vue'), meta: { requiresAuth: true, adminOnly: true } },
+
+  // 🎯 ดักจับลิงก์เก่า: ถ้าหลุดมาที่ /user-management ให้ดีดส่งต่อไปหน้าปัจจุบันทันที ไม่ค้างจอขาว
+  { path: '/user-management', redirect: '/admin/users' },
 
   // คนที่ 2: Log Form
   { path: '/logs/new', component: () => import('../views/LogFormView.vue'), meta: { requiresAuth: true } },

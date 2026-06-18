@@ -1,61 +1,130 @@
 const supabase = require('../db/supabase')
-const bcrypt = require('bcrypt')
+const bcrypt = require('bcryptjs') // 🟢 เปลี่ยนเป็น bcryptjs เรียบร้อยครับ
 
-/**
- * GET /api/users
- * admin only — ดู user ทุกคน พร้อม department
- */
 async function getAllUsers(req, res) {
-  // TODO: 1. query users join departments จาก supabase
-  // TODO: 2. return array of users (ไม่ต้องส่ง password_hash)
+  try {
+    const { data: users, error } = await supabase
+      .from('users')
+      .select(`
+        id, email, full_name, role, department_id, is_approved,
+        departments ( id, code, name )
+      `) // 🟢 เพิ่ม is_approved ในส่วน select
+    if (error) return res.status(400).json({ error: error.message })
+    return res.status(200).json(users)
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' })
+  }
 }
 
-/**
- * GET /api/users/:id
- * admin only
- */
 async function getUserById(req, res) {
-  // TODO: 1. รับ id จาก req.params.id
-  // TODO: 2. query หา user คนนั้น
-  // TODO: 3. ถ้าไม่เจอ → return 404
-  // TODO: 4. return user (ไม่ส่ง password_hash)
+  try {
+    const { id } = req.params
+    const { data: user, error } = await supabase
+      .from('users')
+      .select(`
+        id, email, full_name, role, department_id, is_approved,
+        departments ( id, code, name )
+      `) // 🟢 เพิ่ม is_approved ในส่วน select
+      .eq('id', id)
+      .single()
+
+    if (error || !user) return res.status(404).json({ error: 'ไม่พบข้อมูล' })
+    return res.status(200).json(user)
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' })
+  }
 }
 
-/**
- * POST /api/users
- * admin only — สร้าง user ใหม่
- * body: { email, password, full_name, department_id, role }
- */
 async function createUser(req, res) {
-  // TODO: 1. รับ field จาก req.body
-  // TODO: 2. validate field ที่จำเป็น
-  // TODO: 3. hash password ด้วย bcrypt.hash(password, 10)
-  // TODO: 4. insert user ลง supabase
-  // TODO: 5. return user ที่สร้างใหม่ (ไม่ส่ง password_hash)
+  try {
+    // 🟢 เพิ่มการดึง is_approved จาก req.body
+    const { email, password, full_name, department_id, role, is_approved } = req.body
+
+    if (!email || !password || !full_name || !role) {
+      return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
+    }
+
+    // แฮชด้วย bcryptjs ตัวใหม่
+    const saltRounds = 10
+    const password_hash = await bcrypt.hash(password, saltRounds)
+
+    // 🟢 เอาค่า is_approved ไปผูกในการ insert เข้า database ด้วย
+    const { data: newUser, error } = await supabase
+      .from('users')
+      .insert([{ 
+        email, 
+        password_hash, 
+        full_name, 
+        department_id: department_id || null, 
+        role,
+        is_approved: is_approved !== undefined ? is_approved : false 
+      }])
+      .select('id, email, full_name, role, department_id, is_approved') // 🟢 เพิ่ม is_approved ในส่วน return ผลลัพธ์
+      .single()
+
+    if (error) return res.status(400).json({ error: error.message })
+    return res.status(201).json(newUser)
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' })
+  }
 }
 
-/**
- * PUT /api/users/:id
- * admin only — แก้ไข user
- * body: { full_name, department_id, role } (password optional)
- */
 async function updateUser(req, res) {
-  // TODO: 1. รับ id จาก req.params.id
-  // TODO: 2. รับ field ที่จะแก้จาก req.body
-  // TODO: 3. ถ้ามี password ใหม่ → hash ก่อน
-  // TODO: 4. update user ใน supabase
-  // TODO: 5. return user ที่อัปเดตแล้ว
+  try {
+    const { id } = req.params
+    // 🟢 เพิ่มการรับค่า is_approved จาก req.body เพื่อรองรับเวลาหน้าบ้านกดปุ่มอนุมัติ
+    const { email, password, full_name, department_id, role, is_approved } = req.body
+
+    const updateData = { email, full_name, department_id: department_id || null, role }
+
+    // 🟢 ตรวจสอบสถานะการอนุมัติว่าถูกส่งเข้ามาอัปเดตด้วยหรือไม่
+    if (is_approved !== undefined) {
+      updateData.is_approved = is_approved
+    }
+
+    if (password) {
+      const saltRounds = 10
+      updateData.password_hash = await bcrypt.hash(password, saltRounds)
+    }
+
+    const { data: updatedUser, error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', id)
+      .select('id, email, full_name, role, department_id, is_approved') // 🟢 เพิ่ม is_approved ในส่วน return ผลลัพธ์
+      .single()
+
+    if (error) return res.status(400).json({ error: error.message })
+    if (!updatedUser) return res.status(404).json({ error: 'ไม่พบข้อมูล' })
+
+    return res.status(200).json(updatedUser)
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' })
+  }
 }
 
-/**
- * DELETE /api/users/:id
- * admin only
- */
 async function deleteUser(req, res) {
-  // TODO: 1. รับ id จาก req.params.id
-  // TODO: 2. ห้ามลบตัวเอง (req.user.id === id → return 400)
-  // TODO: 3. delete user จาก supabase
-  // TODO: 4. return { message: 'User deleted' }
+  try {
+    const { id } = req.params
+
+    if (String(req.user.id) === String(id)) {
+      return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) return res.status(400).json({ error: error.message })
+    if (!data) return res.status(404).json({ error: 'ไม่พบข้อมูล' })
+
+    return res.status(200).json({ message: 'ลบผู้ใช้งานสำเร็จ' })
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' })
+  }
 }
 
 module.exports = { getAllUsers, getUserById, createUser, updateUser, deleteUser }
