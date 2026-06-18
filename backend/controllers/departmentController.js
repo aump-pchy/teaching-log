@@ -39,11 +39,15 @@ async function createDepartment(req, res) {
     }
 
     // 2. validate ว่าไม่ซ้ำกับที่มีอยู่ (เช็กทั้งโค้ดแผนก และชื่อแผนก)
+    // 🟢 แก้ไข: เอา .substring() ออก เพื่อให้รันคำสั่งคิวรี่ได้ถูกต้องตามมาตรฐาน Supabase
     const { data: existingDept, error: checkError } = await supabase
       .from('departments')
       .select('id')
       .or(`code.eq.${code},name.eq.${name}`)
-      .substring() // ตรวจจับแบบมีข้อมูลอยู่ไหม
+
+    if (checkError) {
+      return res.status(400).json({ error: checkError.message })
+    }
 
     if (existingDept && existingDept.length > 0) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' }) // (แผนกวิชาหรือโค้ดนี้มีอยู่ในระบบแล้ว)

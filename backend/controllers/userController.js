@@ -6,9 +6,9 @@ async function getAllUsers(req, res) {
     const { data: users, error } = await supabase
       .from('users')
       .select(`
-        id, email, full_name, role, department_id,
+        id, email, full_name, role, department_id, is_approved,
         departments ( id, code, name )
-      `)
+      `) // 🟢 เพิ่ม is_approved ในส่วน select
     if (error) return res.status(400).json({ error: error.message })
     return res.status(200).json(users)
   } catch (err) {
@@ -22,9 +22,9 @@ async function getUserById(req, res) {
     const { data: user, error } = await supabase
       .from('users')
       .select(`
-        id, email, full_name, role, department_id,
+        id, email, full_name, role, department_id, is_approved,
         departments ( id, code, name )
-      `)
+      `) // 🟢 เพิ่ม is_approved ในส่วน select
       .eq('id', id)
       .single()
 
@@ -37,7 +37,8 @@ async function getUserById(req, res) {
 
 async function createUser(req, res) {
   try {
-    const { email, password, full_name, department_id, role } = req.body
+    // 🟢 เพิ่มการดึง is_approved จาก req.body
+    const { email, password, full_name, department_id, role, is_approved } = req.body
 
     if (!email || !password || !full_name || !role) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
@@ -47,10 +48,18 @@ async function createUser(req, res) {
     const saltRounds = 10
     const password_hash = await bcrypt.hash(password, saltRounds)
 
+    // 🟢 เอาค่า is_approved ไปผูกในการ insert เข้า database ด้วย
     const { data: newUser, error } = await supabase
       .from('users')
-      .insert([{ email, password_hash, full_name, department_id: department_id || null, role }])
-      .select('id, email, full_name, role, department_id')
+      .insert([{ 
+        email, 
+        password_hash, 
+        full_name, 
+        department_id: department_id || null, 
+        role,
+        is_approved: is_approved !== undefined ? is_approved : false 
+      }])
+      .select('id, email, full_name, role, department_id, is_approved') // 🟢 เพิ่ม is_approved ในส่วน return ผลลัพธ์
       .single()
 
     if (error) return res.status(400).json({ error: error.message })
@@ -63,9 +72,15 @@ async function createUser(req, res) {
 async function updateUser(req, res) {
   try {
     const { id } = req.params
-    const { email, password, full_name, department_id, role } = req.body
+    // 🟢 เพิ่มการรับค่า is_approved จาก req.body เพื่อรองรับเวลาหน้าบ้านกดปุ่มอนุมัติ
+    const { email, password, full_name, department_id, role, is_approved } = req.body
 
     const updateData = { email, full_name, department_id: department_id || null, role }
+
+    // 🟢 ตรวจสอบสถานะการอนุมัติว่าถูกส่งเข้ามาอัปเดตด้วยหรือไม่
+    if (is_approved !== undefined) {
+      updateData.is_approved = is_approved
+    }
 
     if (password) {
       const saltRounds = 10
@@ -76,7 +91,7 @@ async function updateUser(req, res) {
       .from('users')
       .update(updateData)
       .eq('id', id)
-      .select('id, email, full_name, role, department_id')
+      .select('id, email, full_name, role, department_id, is_approved') // 🟢 เพิ่ม is_approved ในส่วน return ผลลัพธ์
       .single()
 
     if (error) return res.status(400).json({ error: error.message })
