@@ -113,8 +113,8 @@ const fetchLogs = async () => {
   try {
     // ตรวจสอบเงื่อนไข: ถ้าเลือกแผนกวิชา ให้ส่ง ?dept= ไปด้วยตามเงื่อนไขของหนู
     const url = selectedDept.value 
-      ? `/api/logs?dept=${selectedDept.value}` 
-      : '/api/logs'
+      ? `http://localhost:3000/api/logs?dept=${selectedDept.value}` 
+      : 'http://localhost:3000/api/logs'
       
     // ดึงรหัสความปลอดภัย (JWT Token) ที่เก็บไว้ในเครื่องหลังจากเข้าสู่ระบบ
     const token = localStorage.getItem('token') 
