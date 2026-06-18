@@ -58,7 +58,11 @@
           </div>
 
           <div class="field" :class="{ error: errors.password }">
-            <label for="password">รหัสผ่าน</label>
+            <div class="label-row">
+              <label for="password">รหัสผ่าน</label>
+              <!-- 🟢 ลิงก์ลืมรหัสผ่าน ขวาบนของช่องกรอก -->
+              <a @click.prevent="handleForgotPassword" href="#" class="link-forgot">ลืมรหัสผ่าน?</a>
+            </div>
             <div class="input-wrap">
               <i class="ti ti-lock input-icon"></i>
               <input
@@ -96,8 +100,14 @@
           </button>
         </form>
 
+        <!-- 🟢 ปุ่มสมัครสมาชิกย้ายมาอยู่ตรงนี้ เพื่อความง่ายในการกดใช้งาน -->
+        <div class="register-hint">
+          <span>ยังไม่มีบัญชีใช้งาน?</span>
+          <router-link to="/register" class="link-register">สมัครสมาชิกใหม่</router-link>
+        </div>
+
         <div class="card-footer">
-          <p>หากลืมรหัสผ่าน กรุณาติดต่อ<br><strong>ผู้ดูแลระบบหรือหัวหน้าแผนกวิชา</strong></p>
+          <p>หากพบปัญหาในการเข้าสู่ระบบ กรุณาติดต่อ<br><strong>ผู้ดูแลระบบหรือหัวหน้าแผนกวิชา</strong></p>
         </div>
       </div>
     </div>
@@ -149,6 +159,11 @@ async function handleLogin() {
   } finally {
     loading.value = false
   }
+}
+
+// 🟢 ฟังก์ชันเมื่อกดลืมรหัสผ่าน
+function handleForgotPassword() {
+  alert('ระบบรีเซ็ตรหัสผ่านอัตโนมัติกำลังปิดปรับปรุงชั่วคราว \nกรุณานำอีเมลสถาบันไปแจ้งขอเปลี่ยนรหัสผ่านใหม่ที่งานศูนย์ข้อมูล หรือ หัวหน้าแผนกวิชาคอมพิวเตอร์ของอ้ายได้เลยครับ!')
 }
 </script>
 
@@ -323,10 +338,30 @@ async function handleLogin() {
   gap: 6px;
 }
 
+/* 🟢 จัดโครงสร้างให้ข้อความรหัสผ่าน กับ ลิงก์ลืมรหัสผ่าน อยู่ขนานกัน */
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .field label {
   font-size: 14px;
   font-weight: 500;
   color: #374151;
+}
+
+/* 🟢 ตกแต่งปุ่มลืมรหัสผ่าน */
+.link-forgot {
+  font-size: 13px;
+  color: #0F6E56;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link-forgot:hover {
+  text-decoration: underline;
+  color: #085041;
 }
 
 .input-wrap {
@@ -440,9 +475,30 @@ async function handleLogin() {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* 🟢 ตกแต่งส่วนบล็อกแนะนำสมัครสมาชิกใหม่ */
+.register-hint {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.link-register {
+  color: #0F6E56;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.link-register:hover {
+  text-decoration: underline;
+  color: #085041;
+}
+
 .card-footer {
-  margin-top: 28px;
-  padding-top: 24px;
+  margin-top: 24px;
+  padding-top: 20px;
   border-top: 1px solid #e5e7eb;
   text-align: center;
   font-size: 13px;

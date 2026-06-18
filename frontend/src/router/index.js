@@ -4,6 +4,8 @@ import { useAuthStore } from '../stores/auth'
 const routes = [
   // คนที่ 1: Auth
   { path: '/login', component: () => import('../views/LoginView.vue') },
+  // 🟢 เพิ่มเส้นทางหน้าสมัครสมาชิก (Register) ตรงนี้ครับอ้าย
+  { path: '/register', component: () => import('../views/registerView.vue') }, 
   { path: '/admin/users', component: () => import('../views/UserManageView.vue'), meta: { requiresAuth: true, adminOnly: true } },
 
   // คนที่ 2: Log Form
@@ -25,11 +27,10 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, _, next) => {
+router.beforeEach((to) => {
   const auth = useAuthStore()
-  if (to.meta.requiresAuth && !auth.token) return next('/login')
-  if (to.meta.adminOnly && auth.user?.role !== 'admin') return next('/logs')
-  next()
+  if (to.meta.requiresAuth && !auth.token) return '/login'
+  if (to.meta.adminOnly && auth.user?.role !== 'admin') return '/logs'
 })
 
 export default router

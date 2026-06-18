@@ -41,69 +41,65 @@
 
     <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-[#0f543e] text-white text-sm font-medium">
-              <th class="py-4 px-4 text-center w-20">สัปดาห์</th>
-              <th class="py-4 px-4 w-32 text-center">รหัสวิชา</th>
-              <th class="py-4 px-6">ชื่อวิชา</th>
-              <th class="py-4 px-4">ครูผู้สอน</th>
-              <th class="py-4 px-6">แผนกวิชา</th>
-              <th class="py-4 px-4 text-center w-28">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100 text-sm">
-            <template v-if="filteredLogs.length > 0">
-              <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-[#f9fbf9] transition-colors">
-                <td class="py-4 px-4 text-center font-semibold text-[#0f543e]">
-                  {{ log.week }}
-                </td>
-                
-                <td class="py-4 px-4 text-center">
-                  <span class="font-mono text-xs bg-slate-50 text-slate-600 rounded px-2 py-1 border border-slate-100">
-                    {{ log.subject_code }}
-                  </span>
-                </td>
-                
-                <td class="py-4 px-6 font-medium text-slate-800">
-                  {{ log.subject_name }}
-                </td>
-                
-                <td class="py-4 px-4 whitespace-nowrap font-medium text-slate-700">
-                  {{ log.teacher_name }}
-                </td>
+        <table class="w-full table-fixed border-collapse">
+  <thead class="bg-[#0f543e] text-white text-sm">
+    <tr>
+      <th class="py-3 px-4 text-center w-[10%]">สัปดาห์</th>
+      <th class="py-3 px-4 text-center w-[15%]">รหัสวิชา</th>
+      <th class="py-3 px-6 text-left w-[30%]">ชื่อวิชา</th>
+      <th class="py-3 px-4 text-left w-[20%]">ครูผู้สอน</th>
+      <th class="py-3 px-6 text-left w-[15%]">แผนกวิชา</th>
+      <th class="py-3 px-4 text-center w-[10%]">จัดการ</th>
+    </tr>
+  </thead>
 
-                <td class="py-4 px-6 text-slate-600">
-                  {{ log.department_name }}
-                </td>
-                
-                <td class="py-4 px-4 text-center">
-                  <button 
-                    @click="viewDetail(log.id)"
-                    class="bg-[#0f543e] hover:bg-[#13664c] text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors shadow-sm"
-                  >
-                    ดูรายละเอียด
-                  </button>
-                </td>
-              </tr>
-            </template>
-            
-            <tr v-else>
-              <td colSpan="6" class="py-10 text-center text-slate-400">
-                ไม่พบข้อมูลบันทึกการสอนของแผนกวิชานี้
-              </td>
-            </tr>
-          </tbody>
-        </table>
+  <tbody class="divide-y divide-slate-100 text-sm">
+    <template v-if="filteredLogs.length > 0">
+      <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-[#f9fbf9] transition-colors">
+        
+        <td class="py-4 px-4 text-center font-semibold text-[#0f543e] truncate">
+          {{ log.week }}
+        </td>
+        
+        <td class="py-4 px-4 text-center truncate">
+          <span class="font-mono text-xs bg-slate-50 text-slate-600 rounded px-2 py-1 border border-slate-100">
+            {{ log.subject_code }}
+          </span>
+        </td>
+        
+        <td class="py-4 px-6 font-medium text-slate-800 truncate" :title="log.subject_name">
+          {{ log.subject_name }}
+        </td>
+        
+        <td class="py-4 px-4 font-medium text-slate-700 truncate" :title="log.teacher_name">
+          {{ log.teacher_name }}
+        </td>
+
+        <td class="py-4 px-6 text-slate-600 truncate" :title="log.department_name">
+          {{ log.department_name }}
+        </td>
+        
+        <td class="py-4 px-4 text-center">
+          <button @click="viewDetail(log.id)" class="bg-[#0f543e] text-white text-xs px-3 py-1.5 rounded hover:bg-[#0c4331] transition-colors whitespace-nowrap">
+            ดูรายละเอียด
+          </button>
+        </td>
+      </tr>
+    </template>
+  </tbody>
+</table>
       </div>
     </div>
-
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router' // 🟢 นำเข้าระบบจัดเส้นทางย้ายหน้าจอ
 import axios from 'axios' // ยิงเรียกข้อมูลจากหลังบ้าน
+
+// เรียกใช้งานฟังก์ชัน Router ของ Vue
+const router = useRouter()
 
 // 1. เปลี่ยนตัวแปรหลักให้กลายเป็นกล่องเปล่า เพื่อรอรับข้อมูลจริงจาก Supabase
 const rawLogs = ref([])
@@ -150,8 +146,8 @@ const filteredLogs = computed(() => {
   return rawLogs.value
 })
 
-// ปุ่มกดดูรายละเอียด
+// 🟢 ปรับแก้: สั่งให้ผลักหน้าจอบราวเซอร์ วิ่งไปยังหน้ารายละเอียดของชิ้นงานนั้นทันที
 const viewDetail = (id) => {
-  alert(`ดูรายละเอียด ID: ${id} (รอระบบของเพื่อนคนที่ 4 เชื่อมต่อ)`)
+  router.push(`/logs/${id}`)
 }
 </script>
