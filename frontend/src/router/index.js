@@ -16,7 +16,7 @@ const routes = [
   { path: '/logs', component: () => import('../views/LogListView.vue'), meta: { requiresAuth: true } },
 
   // คนที่ 4: Log Detail
-  { path: '/logs/:id', component: () => import('../views/LogDetailView.vue'), meta: { requiresAuth: false } },
+  { path: '/logs/:id', component: () => import('../views/LogDetailView.vue'), meta: { requiresAuth: true } },
 
   // default
   { path: '/', component: () => import('../views/LandingView.vue') },

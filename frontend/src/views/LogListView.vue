@@ -103,6 +103,10 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router' // 🟢 นำเข้าระบบจัดเส้นทางย้ายหน้าจอ
+
+// เรียกใช้งานฟังก์ชัน Router ของ Vue
+const router = useRouter()
 
 // 1. ข้อมูลสมมุติ (Mock Data)
 const mockLogs = ref([
@@ -156,8 +160,8 @@ const filteredLogs = computed(() => {
   return mockLogs.value.filter(log => log.department_name === selectedDept.value)
 })
 
-// ฟังก์ชันปุ่มกดดูรายละเอียด
+// 🟢 ปรับแก้: สั่งให้ผลักหน้าจอบราวเซอร์ วิ่งไปยังหน้ารายละเอียดของชิ้นงานนั้นทันที
 const viewDetail = (id) => {
-  alert(`ดูรายละเอียด ID: ${id} (รอเชื่อมต่อหน้า LogDetailView)`)
+  router.push(`/logs/${id}`)
 }
 </script>
