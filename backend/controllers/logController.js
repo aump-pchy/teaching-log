@@ -7,14 +7,17 @@ const supabase = require('../db/supabase')
  */
 async function getAllLogs(req, res) {
   try {
-// 2. เปิดใช้งานตัวแปรแกะ Token จริงที่ผูกไว้กับ authMiddleware คืนมา:
+    // 1. พิมพ์ปลอมตัวตนเป็นแอดมินไว้ตรงนี้เลยค่ะ (หรือจะเปลี่ยนเป็น 'teacher' ก็ได้น้า)
+    //const userId = 3; 
+    //const userRole = 'admin'; // เปลี่ยนเป็น 'admin' เพื่อทดสอบสิทธิ์แอดมิน
+
+    // 2. เปิดใช้งานตัวแปรแกะ Token จริงที่ผูกไว้กับ authMiddleware คืนมา:
     const { id: userId, role: userRole } = req.user;
     
     // ดึงค่า query ตัวกรองรหัสแผนก เช่น ?dept=IT, ?dept=EE
     const { dept } = req.query; 
 
-    // 2. ดึงข้อมูลตาราง teaching_logs พร้อม Join ตาราง users และ departments
-    // อิงตามฟิลด์ full_name, department_id และ code, name
+   // 2. ดึงข้อมูลตาราง teaching_logs พร้อม Join ตาราง users และ departments
     let query = supabase
       .from('teaching_logs')
       .select(`
@@ -31,16 +34,20 @@ async function getAllLogs(req, res) {
         )
       `);
 
-    // 3. เงื่อนไขสำหรับคุณครู (Teacher) -> ดึงเฉพาะงานที่มี user_id ตรงกับตัวเอง
+    // 3. เงื่อนไขสำหรับคุณครู (Teacher) -> เห็นเฉพาะงานตัวเอง
     if (userRole === 'teacher') {
       query = query.eq('user_id', userId);
     }
 
-    // 4. เงื่อนไขสำหรับแอดมิน (Admin) -> ถ้ามีการแนบรหัสแผนกมา ให้กรองตามฟิลด์ code ในตาราง departments
-if (userRole === 'admin' && dept) {
-      query = query.eq('users.department_id', dept);
+    // 4. ปลดล็อกระบบกรองของแอดมินให้ฉลาดและตรงกับดาต้าเบส
+    if (userRole === 'admin' && dept) {
+      // ตรวจสอบว่าถ้าหน้าบ้านส่งค่ามาเป็นตัวเลข (เช่น 1, 2, 3) ให้กรองผ่าน department_id ตรงๆ
+      if (!isNaN(dept)) {
+        query = query.eq('users.department_id', parseInt(dept));
+      } else {
+        query = query.filter('users.departments.code', 'eq', dept);
+      }
     }
-
     // 5. สั่งให้คำสั่งทำงานดึงข้อมูลจริงจาก Supabase
     const { data: logs, error } = await query;
 
