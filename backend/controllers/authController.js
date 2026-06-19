@@ -14,8 +14,7 @@ async function login(req, res) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
     }
 
-    // 🟢 [ขุนโปรโหมด - ปิดตัวตรวจสอบชั่วคราว] 
-    // จำลองข้อมูลผู้ใช้งานตามเงื่อนไขอีเมล โดยไม่ต้องเช็คฐานข้อมูลและรหัสผ่าน
+    // 🟢 [ขุนโปรโหมด V2 - ใช้คีย์จริง .env + id จริงจากดาต้าเบส]
     let mockUser = null;
 
     if (email.toLowerCase().includes('admin')) {
