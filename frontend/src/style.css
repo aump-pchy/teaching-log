@@ -6,3 +6,150 @@ body { font-family: 'Sarabun', sans-serif; }
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* นำเข้าฟอนต์ TH Sarabun PSK */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+
+/* ตั้งค่า TH Sarabun PSK เป็นหลักทั่วทั้งเว็บและงานพิมพ์ */
+body, input, textarea, select, button {
+  font-family: 'TH Sarabun PSK', 'Sarabun', sans-serif !important;
+}
+
+/* เพิ่มเติมกลุ่มปุ่มสั่งงานขวาแบบเป็นคู่เด่นชัด */
+.action-buttons-group {
+  display: flex;
+  gap: 10px;
+}
+
+/* 🟢 ปุ่มย้อนกลับดีไซน์สีเขียวให้เข้าชุดกับเพื่อน */
+.back-btn-green {
+  display: inline-flex;
+  align-items: center;
+  background-color: #e8f5e9;
+  color: #166534;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 16px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #c8e6c9;
+  transition: all 0.2s ease;
+}
+.back-btn-green:hover {
+  background-color: #c8e6c9;
+  color: #1b5e20;
+}
+
+/* 📝 ปุ่มเปิด-ปิดระบบล็อกแก้ไขข้อมูล */
+.edit-toggle-btn {
+  background-color: #4b5563;
+  color: white;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.edit-toggle-btn:hover { background-color: #374151; }
+.edit-toggle-btn.editing-active { background-color: #dc2626; } /* สีแดงเมื่อเปิดโหมดแก้ข้อมูล */
+
+/* 🟠 ปุ่มบันทึกสไตล์วัสดุสีส้ม-เหลืองนวลดูเก๋ไก๋ตัดกับธีมหลัก */
+.save-data-btn {
+  background-color: #d97706;
+  color: white;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: background-color 0.2s ease;
+}
+.save-data-btn:hover { background-color: #b45309; }
+
+/* 🔵 ปุ่ม Export PDF สไตล์สีฟ้าตามสั่ง */
+.export-pdf-blue-btn {
+  background-color: #0284c7;
+  color: white;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: background-color 0.2s ease;
+}
+.export-pdf-blue-btn:hover { background-color: #0369a1; }
+
+/* หน้าตาอินพุตเมื่อโดนล็อก (Disabled State) จะปรับให้อ่านง่ายเนียนไปกับเอกสาร */
+input:disabled, textarea:disabled, select:disabled {
+  color: #000000 !important;
+  cursor: default;
+  background-color: transparent !important;
+}
+
+/* ส่วนที่เหลือคงไว้ตามเดิม */
+.page-title-mode { font-size: 15px; font-weight: 600; color: #166534; background: #e8f5e9; padding: 4px 12px; border-radius: 15px; }
+.form-input-grid { display: grid; grid-template-cols: 2fr 1fr; gap: 15px; text-align: left; }
+.input-block { display: flex; flex-direction: column; gap: 4px; text-align: left; }
+.input-block label { font-size: 15px; font-weight: bold; color: #374151; }
+
+.editable-input {
+  border: 1px solid #cbd5e1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.editable-input:focus { border-color: #15803d; outline: none; box-shadow: 0 0 0 3px rgba(21,128,61,0.1); }
+
+.editable-textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 15px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.editable-input-underlined {
+  border: none;
+  border-bottom: 1px dashed #1f2937;
+  padding: 4px 5px;
+  font-size: 15px;
+  width: 100%;
+  background: transparent;
+}
+.editable-input-underlined:focus { outline: none; border-bottom-style: solid; border-bottom-color: #15803d; }
+
+.input-inline-label { font-size: 15px; font-weight: bold; display: block; text-align: left; margin-top: 8px; }
+.mt-15 { margin-top: 15px; }
+.mt-20 { margin-top: 20px; }
+.editable-input-small { width: 100%; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 14px; border-radius: 4px; }
+
+.cb-indented-grid-box {
+  padding-left: 25px;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.custom-cb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  color: #000000;
+}
+.custom-cb input { cursor: pointer; }
+.custom-cb input:disabled { cursor: default; }
+
+.cb-inline-row { display: flex; align-items: center; width: 100%; }
+.ml-5 { margin-left: 5px; }

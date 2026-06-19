@@ -25,6 +25,12 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   async function login(email, password) {
+    // const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/auth/login`, { email, password })
+    // token.value = data.token
+    // user.value  = data.user
+    // localStorage.setItem('token', data.token)
+    // localStorage.setItem('user',  JSON.stringify(data.user))
+    // axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
     // ตรวจสอบ VITE_API_URL เผื่อกรณีไม่มีค่าใน env
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
     const { data } = await axios.post(`${baseUrl}/auth/login`, { email, password })
@@ -38,11 +44,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
-    token.value = null
-    user.value  = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    delete axios.defaults.headers.common['Authorization']
+    // token.value = null
+    // user.value  = null
+    // localStorage.removeItem('token')
+    // localStorage.removeItem('user')
+    // delete axios.defaults.headers.common['Authorization']
   }
 
   // set token on app load
