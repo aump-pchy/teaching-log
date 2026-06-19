@@ -7,8 +7,8 @@ const supabase = require('../db/supabase')
  */
 async function getAllLogs(req, res) {
   try {
-    // 1. แกะดูสิทธิ์ผู้ใช้จาก req.user ที่ส่งมาจากระบบล็อกอิน
-    const { id: userId, role: userRole } = req.user; 
+// 2. เปิดใช้งานตัวแปรแกะ Token จริงที่ผูกไว้กับ authMiddleware คืนมา:
+    const { id: userId, role: userRole } = req.user;
     
     // ดึงค่า query ตัวกรองรหัสแผนก เช่น ?dept=IT, ?dept=EE
     const { dept } = req.query; 
@@ -37,9 +37,8 @@ async function getAllLogs(req, res) {
     }
 
     // 4. เงื่อนไขสำหรับแอดมิน (Admin) -> ถ้ามีการแนบรหัสแผนกมา ให้กรองตามฟิลด์ code ในตาราง departments
-    if (userRole === 'admin' && dept) {
-      // ค้นหาเจาะลึกผ่านตารางสัมพันธ์ users -> departments -> ฟิลด์ code
-      query = query.eq('users.departments.code', dept);
+if (userRole === 'admin' && dept) {
+      query = query.eq('users.department_id', dept);
     }
 
     // 5. สั่งให้คำสั่งทำงานดึงข้อมูลจริงจาก Supabase
