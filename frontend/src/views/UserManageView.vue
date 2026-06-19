@@ -6,13 +6,13 @@
         <p class="page-subtitle">จัดการรายชื่ออาจารย์ เจ้าหน้าที่ และสิทธิ์การใช้งานในระบบบันทึกการสอน</p>
       </div>
       <button @click="openAddModal" class="btn btn-primary">
-        <i class="ti ti-user-plus"></i> เพิ่มผู้ใช้งานใหม่
+        <i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้งานใหม่
       </button>
     </div>
 
     <div class="filter-card">
       <div class="search-box">
-        <i class="ti ti-search search-icon"></i>
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
         <input 
           v-model="filters.search" 
           type="text" 
@@ -24,7 +24,7 @@
       <div class="filter-selects">
         <select v-model="filters.departmentId" class="form-control select-control">
           <option value="">แผนกวิชาทั้งหมด</option>
-          <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+          <option v-for="dept in departmentsList" :key="dept.id" :value="dept.id">
             {{ dept.name }}
           </option>
         </select>
@@ -40,7 +40,7 @@
     <div class="table-responsive">
       <div v-if="loading" class="loading-state">
         <span class="spinner"></span>
-        <p>กำลังโหลดข้อมูลจากฐานข้อมูล Supabase...</p>
+        <p>กำลังโหลดข้อมูลผู้ใช้งาน...</p>
       </div>
 
       <table v-else class="user-table">
@@ -75,28 +75,28 @@
                   class="btn-icon btn-approve" 
                   title="อนุมัติการใช้งาน"
                 >
-                  <i class="ti ti-user-check"></i>
+                  <i class="fa-solid fa-user-check"></i>
                 </button>
                 <span v-else class="approved-status-badge" title="อนุมัติการใช้งานเรียบร้อยแล้ว">
-                  <i class="ti ti-circle-check"></i>
+                  <i class="fa-solid fa-circle-check"></i>
                 </span>
 
                 <button @click="openEditModal(user)" class="btn-icon btn-edit" title="แก้ไขข้อมูล">
-                  <i class="ti ti-edit"></i>
+                  <i class="fa-solid fa-user-pen"></i>
                 </button>
                 
                 <button 
                   @click="handleResetPassword(user)" 
                   class="btn-icon btn-reset" 
-                  :class="{ 'btn-disabled': !authStore.isAdmin }"
-                  :disabled="!authStore.isAdmin"
-                  :title="authStore.isAdmin ? 'รีเซ็ตรหัสผ่าน' : 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่จัดการได้'"
+                  :class="{ 'btn-disabled': !isAdminCheck }"
+                  :disabled="!isAdminCheck"
+                  :title="isAdminCheck ? 'รีเซ็ตรหัสผ่าน' : 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่จัดการได้'"
                 >
-                  <i class="ti ti-key"></i>
+                  <i class="fa-solid fa-key"></i>
                 </button>
 
                 <button @click="deleteUser(user.id)" class="btn-icon btn-delete" title="ลบผู้ใช้งาน">
-                  <i class="ti ti-trash"></i>
+                  <i class="fa-solid fa-trash-can"></i>
                 </button>
               </div>
             </td>
@@ -112,7 +112,7 @@
       <div class="modal-card">
         <div class="modal-header">
           <h3>
-            {{ modal.isResetPassword ? '🔒 รีเซ็ตรหัสผ่านใหม่' : (modal.isEdit ? 'แก้ไขข้อมูลผู้ใช้งาน' : 'เพิ่มผู้ใช้งานใหม่') }}
+            {{ modal.isResetPassword ? '🔒 รีเซ็ตรหัสผ่านใหม่' : (modal.isEdit ? '📝 แก้ไขข้อมูลผู้ใช้งาน' : '➕ เพิ่มผู้ใช้งานใหม่') }}
           </h3>
           <button @click="closeModal" class="btn-close">&times;</button>
         </div>
@@ -152,7 +152,7 @@
                 <label>แผนกวิชา</label>
                 <select v-model="form.department_id" class="form-control" required>
                   <option value="">เลือกแผนกวิชา</option>
-                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+                  <option v-for="dept in departmentsList" :key="dept.id" :value="dept.id">
                     {{ dept.name }}
                   </option>
                 </select>
@@ -213,6 +213,39 @@ const form = reactive({
   role: 'teacher'
 })
 
+// ดักจับเช็คสิทธิ์ผู้ดูแลระบบแบบปลอดภัย ป้องกันโค้ดพังเวลา Store ยังไม่ถูก Initialize
+const isAdminCheck = computed(() => {
+  if (!authStore) return false
+  const userObj = authStore.user?.value || authStore.user
+  return userObj?.role === 'admin' || authStore.isAdmin === true
+})
+
+// ดักจับแปลงค่าแผนกวิชาให้เป็น Array เสมอ ป้องกันอาการ Object ซ้อนพังหน้าเว็บ
+const departmentsList = computed(() => {
+  if (!departments.value) return []
+  if (Array.isArray(departments.value)) return departments.value
+  if (departments.value.data && Array.isArray(departments.value.data)) return departments.value.data
+  return []
+})
+
+// ตัวกรองผู้ใช้งานที่มีระบบ Safety Check ป้องกันข้อมูลว่างในจังหวะแรก
+const filteredUsers = computed(() => {
+  const rawUsers = users.value?.data || users.value
+  if (!Array.isArray(rawUsers)) return []
+  
+  return rawUsers.filter(user => {
+    if (!user) return false
+    const matchSearch = !filters.search || 
+      (user.full_name && user.full_name.toLowerCase().includes(filters.search.toLowerCase())) ||
+      (user.email && user.email.toLowerCase().includes(filters.search.toLowerCase()))
+    
+    const matchDept = !filters.departmentId || Number(user.department_id) === Number(filters.departmentId)
+    const matchRole = !filters.role || user.role === filters.role
+    
+    return matchSearch && matchDept && matchRole
+  })
+})
+
 onMounted(async () => {
   await fetchDepartments()
   await fetchUsers()
@@ -234,9 +267,10 @@ const fetchUsers = async () => {
     users.value = res.data
   } catch (err) {
     console.error('ดึงข้อมูลผู้ใช้ล้มเหลว:', err)
+    // จำลองข้อมูลกรณีเชื่อมต่อ Database สำรอง
     users.value = [
-      { id: 1, full_name: 'ผู้ดูแลระบบ', email: 'admin@loeitc.ac.th', department_id: 2, role: 'admin', is_approved: true, departments: { id: 2, code: 'AI', name: 'เทคโนโลยี AI' } },
-      { id: 3, full_name: 'นางสาวสมพร ใจดี', email: 'somporn@loeitc.ac.th', department_id: 1, role: 'teacher', is_approved: false, departments: { id: 1, code: 'IT', name: 'เทคโนโลยีสารสนเทศ' } }
+      { id: 1, full_name: 'ผู้ดูแลระบบ', email: 'admin@loeitc.ac.th', department_id: 2, role: 'admin', is_approved: true, departments: { id: 2, name: 'เทคโนโลยีสารสนเทศ' } },
+      { id: 3, full_name: 'นางสาวสมพร ใจดี', email: 'somporn@loeitc.ac.th', department_id: 1, role: 'teacher', is_approved: false, departments: { id: 1, name: 'คหกรรมศาสตร์' } }
     ]
   } finally {
     loading.value = false
@@ -244,27 +278,12 @@ const fetchUsers = async () => {
 }
 
 const getDepartmentName = (user) => {
-  if (user.departments && user.departments.name) {
-    return user.departments.name
-  }
-  const dept = departments.value.find(d => Number(d.id) === Number(user.department_id))
+  if (user.departments?.name) return user.departments.name
+  if (user.department?.name) return user.department.name
+  
+  const dept = departmentsList.value.find(d => Number(d.id) === Number(user.department_id))
   return dept ? dept.name : 'ไม่ระบุแผนก'
 }
-
-const filteredUsers = computed(() => {
-  if (!Array.isArray(users.value)) return []
-  
-  return users.value.filter(user => {
-    const matchSearch = !filters.search || 
-      (user.full_name && user.full_name.toLowerCase().includes(filters.search.toLowerCase())) ||
-      (user.email && user.email.toLowerCase().includes(filters.search.toLowerCase()))
-    
-    const matchDept = !filters.departmentId || Number(user.department_id) === Number(filters.departmentId)
-    const matchRole = !filters.role || user.role === filters.role
-    
-    return matchSearch && matchDept && matchRole
-  })
-})
 
 const resetForm = () => {
   form.email = ''
@@ -299,9 +318,7 @@ const closeModal = () => {
 }
 
 const handleResetPassword = async (user) => {
-  const currentUser = authStore.user?.value || authStore.user
-  
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!isAdminCheck.value) {
     return alert('สิทธิ์ของอ้ายไม่สามารถรีเซ็ตรหัสผ่านได้! ฟังก์ชันนี้กดได้เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นครับ ❌')
   }
 
@@ -333,7 +350,7 @@ const saveUser = async () => {
         role: form.role,
         password: form.password
       })
-      alert(`🎉 สำเร็จ! ทำการเปลี่ยนและรีเซ็ตรหัสผ่านใหม่ของ ${form.full_name} เป็นที่เรียบร้อยแล้วครับอ้าย!`)
+      alert(`🎉 สำเร็จ! ทำการเปลี่ยนและรีเซ็ตรหัสผ่านใหม่ของ ${form.full_name} เรียบร้อยแล้วครับ!`)
     } else if (modal.isEdit) {
       await axios.put(`${API_URL}/users/${modal.currentUserId}`, {
         full_name: form.full_name,
@@ -343,11 +360,10 @@ const saveUser = async () => {
       })
       alert('อัปเดตข้อมูลผู้ใช้งานสำเร็จ!')
     } else {
-      const payload = {
+      await axios.post(`${API_URL}/users`, {
         ...form,
         department_id: Number(form.department_id)
-      }
-      await axios.post(`${API_URL}/users`, payload)
+      })
       alert('เพิ่มผู้ใช้งานรายใหม่เข้าฐานข้อมูลสำเร็จ!')
     }
     closeModal()
@@ -357,11 +373,10 @@ const saveUser = async () => {
     const errorMsg = err.response?.data?.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาเช็กเซิร์ฟเวอร์หลังบ้าน'
     alert(`เกิดข้อผิดพลาด: ${errorMsg}`)
   } finally {
-    modal.saving = false
-  }
+  modal.saving = false
+}
 }
 
-// 🟢 อัปเดตฟังก์ชันอนุมัติสิทธิ์ให้เปลี่ยนสถานะในตารางทันทีหลังจากดึงฐานข้อมูลใหม่
 const handleApprove = async (user) => {
   try {
     await axios.put(`${API_URL}/users/${user.id}`, {
@@ -372,7 +387,7 @@ const handleApprove = async (user) => {
       is_approved: true
     })
     alert(`อนุมัติสิทธิ์การใช้งานให้คุณ ${user.full_name} สำเร็จแล้วอ้าย!`)
-    await fetchUsers() // สั่งโหลดข้อมูลใหม่เพื่ออัปเดต UI หน้าบ้านให้ปุ่มหายไป
+    await fetchUsers()
   } catch (err) {
     console.error(err)
     alert('เกิดข้อผิดพลาดในการอนุมัติสิทธิ์')
@@ -380,7 +395,8 @@ const handleApprove = async (user) => {
 }
 
 const deleteUser = async (id) => {
-  if (authStore.user && authStore.user.id === id) {
+  const currentUser = authStore.user?.value || authStore.user
+  if (currentUser && currentUser.id === id) {
     return alert('อ้ายจะลบบัญชี Admin ที่กำลังใช้งานอยู่ตอนนี้ไม่ได้นะอ้าย! 😂')
   }
 
@@ -575,7 +591,7 @@ const deleteUser = async (id) => {
   justify-content: center;
   cursor: pointer;
   border: none;
-  font-size: 15px;
+  font-size: 14px;
   transition: all 0.15s ease;
 }
 
@@ -590,7 +606,6 @@ const deleteUser = async (id) => {
 }
 .btn-approve:hover { background-color: #0284C7; color: white; }
 
-/* 🟢 เพิ่ม CSS ตกแต่งสำหรับสถานะเมื่ออนุมัติเสร็จแล้ว */
 .approved-status-badge {
   width: 30px;
   height: 30px;

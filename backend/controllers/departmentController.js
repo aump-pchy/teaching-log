@@ -39,11 +39,15 @@ async function createDepartment(req, res) {
     }
 
     // 2. validate ว่าไม่ซ้ำกับที่มีอยู่ (เช็กทั้งโค้ดแผนก และชื่อแผนก)
+    // 🟢 แก้ไข: ลบ .substring() ที่ไม่มีอยู่จริงออก เพื่อไม่ให้ระบบพังครืน
     const { data: existingDept, error: checkError } = await supabase
       .from('departments')
       .select('id')
       .or(`code.eq.${code},name.eq.${name}`)
-      .substring() // ตรวจจับแบบมีข้อมูลอยู่ไหม
+
+    if (checkError) {
+      return res.status(400).json({ error: checkError.message })
+    }
 
     if (existingDept && existingDept.length > 0) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' }) // (แผนกวิชาหรือโค้ดนี้มีอยู่ในระบบแล้ว)
@@ -117,7 +121,6 @@ async function deleteDepartment(req, res) {
     const { id } = req.params
 
     // 2. เช็คว่ายังมี user อยู่ใน department นี้ไหม → ถ้ามี return 400 ข้อมูลไม่ถูกต้อง
-    // โดยการไปนับจำนวน (Count) ในตาราง users ที่มี department_id ตรงกับข้อนี้
     const { count, error: countError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
@@ -145,7 +148,7 @@ async function deleteDepartment(req, res) {
       return res.status(404).json({ error: 'ไม่พบข้อมูล' })
     }
 
-    // 4. return { message: 'Department deleted' } ปรับข้อความภาษาไทยให้สวยงาม
+    // 4. return ข้อความภาษาไทยสวยงาม
     return res.status(200).json({ message: 'ลบแผนกสำเร็จ' })
   } catch (err) {
     console.error('DeleteDepartment Error:', err)
@@ -153,4 +156,4 @@ async function deleteDepartment(req, res) {
   }
 }
 
-module.exports = { getAllDepartments, createDepartment, updateDepartment, deleteDepartment } 
+module.exports = { getAllDepartments, createDepartment, updateDepartment, deleteDepartment }

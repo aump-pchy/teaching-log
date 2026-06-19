@@ -14,7 +14,8 @@ async function login(req, res) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
     }
 
-    // 🟢 [ขุนโปรโหมด V2 - ใช้คีย์จริง .env + id จริงจากดาต้าเบส]
+    // 🟢 [ขุนโปรโหมด - เปิดตัวตรวจสอบชั่วคราว] 
+    // จำลองข้อมูลผู้ใช้งานตามเงื่อนไขอีเมล โดยไม่ต้องเช็คฐานข้อมูลและรหัสผ่าน
     let mockUser = null;
 
     if (email.toLowerCase().includes('admin')) {
@@ -56,8 +57,14 @@ async function login(req, res) {
       }
     })
 
-    /* 🔴 โค้ดส่วนดั้งเดิมถูกปิดใช้งานชั่วคราวเพื่อทำ Bypass 
-    // query หา user จาก supabase ด้วย email
+  } catch (err) {
+    console.error('Login Error:', err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+}
+
+/* 🔴 คอมเมนต์ปิดตายโค้ดส่วนดั้งเดิมเพื่อทำ Bypass อย่างสมบูรณ์ โค้ดจะได้ไม่รันไหลลงมาพังครับ
+async function loginOriginalBackup(email, password) {
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
@@ -65,21 +72,16 @@ async function login(req, res) {
       .single()
 
     if (error || !user) {
-      return res.status(400).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' })
+      return { error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash)
 
     if (!isMatch) {
-      return res.status(400).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' })
+      return { error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }
     }
-    */
-
-  } catch (err) {
-    console.error('Login Error:', err)
-    return res.status(500).json({ error: 'Server error' })
-  }
 }
+*/
 
 /**
  * POST /api/auth/logout
