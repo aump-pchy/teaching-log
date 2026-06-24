@@ -6,13 +6,13 @@
         <p class="page-subtitle">จัดการรายชื่ออาจารย์ เจ้าหน้าที่ และสิทธิ์การใช้งานในระบบบันทึกการสอน</p>
       </div>
       <button @click="openAddModal" class="btn btn-primary">
-        <i class="ti ti-user-plus"></i> เพิ่มผู้ใช้งานใหม่
+        <i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้งานใหม่
       </button>
     </div>
 
     <div class="filter-card">
       <div class="search-box">
-        <i class="ti ti-search search-icon"></i>
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
         <input 
           v-model="filters.search" 
           type="text" 
@@ -24,7 +24,7 @@
       <div class="filter-selects">
         <select v-model="filters.departmentId" class="form-control select-control">
           <option value="">แผนกวิชาทั้งหมด</option>
-          <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+          <option v-for="dept in departmentsList" :key="dept.id" :value="dept.id">
             {{ dept.name }}
           </option>
         </select>
@@ -40,7 +40,7 @@
     <div class="table-responsive">
       <div v-if="loading" class="loading-state">
         <span class="spinner"></span>
-        <p>กำลังโหลดข้อมูลจากฐานข้อมูล Supabase...</p>
+        <p>กำลังโหลดข้อมูลผู้ใช้งาน...</p>
       </div>
 
       <table v-else class="user-table">
@@ -59,7 +59,7 @@
             <td>{{ user.email }}</td>
             <td>
               <span class="badge badge-dept">
-                {{ getDepartmentName(user.department_id) }}
+                {{ getDepartmentName(user) }}
               </span>
             </td>
             <td>
@@ -69,17 +69,34 @@
             </td>
             <td>
               <div class="action-buttons">
-                <button @click="handleApprove(user)" class="btn-icon btn-approve" title="อนุมัติการใช้งาน">
-                  <i class="ti ti-user-check"></i>
+                <button 
+                  v-if="!user.is_approved" 
+                  @click="handleApprove(user)" 
+                  class="btn-icon btn-approve" 
+                  title="อนุมัติการใช้งาน"
+                >
+                  <i class="fa-solid fa-user-check"></i>
                 </button>
+                <span v-else class="approved-status-badge" title="อนุมัติการใช้งานเรียบร้อยแล้ว">
+                  <i class="fa-solid fa-circle-check"></i>
+                </span>
+
                 <button @click="openEditModal(user)" class="btn-icon btn-edit" title="แก้ไขข้อมูล">
-                  <i class="ti ti-edit"></i>
+                  <i class="fa-solid fa-user-pen"></i>
                 </button>
-                <button @click="handleResetPassword(user)" class="btn-icon btn-reset" title="รีเซ็ตรหัสผ่าน">
-                  <i class="ti ti-key"></i>
+                
+                <button 
+                  @click="handleResetPassword(user)" 
+                  class="btn-icon btn-reset" 
+                  :class="{ 'btn-disabled': !isAdminCheck }"
+                  :disabled="!isAdminCheck"
+                  :title="isAdminCheck ? 'รีเซ็ตรหัสผ่าน' : 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่จัดการได้'"
+                >
+                  <i class="fa-solid fa-key"></i>
                 </button>
+
                 <button @click="deleteUser(user.id)" class="btn-icon btn-delete" title="ลบผู้ใช้งาน">
-                  <i class="ti ti-trash"></i>
+                  <i class="fa-solid fa-trash-can"></i>
                 </button>
               </div>
             </td>
@@ -94,39 +111,61 @@
     <div v-if="modal.show" class="modal-backdrop">
       <div class="modal-card">
         <div class="modal-header">
-          <h3>{{ modal.isEdit ? 'แก้ไขข้อมูลผู้ใช้งาน' : 'เพิ่มผู้ใช้งานใหม่' }}</h3>
+          <h3>
+            {{ modal.isResetPassword ? '🔒 รีเซ็ตรหัสผ่านใหม่' : (modal.isEdit ? '📝 แก้ไขข้อมูลผู้ใช้งาน' : '➕ เพิ่มผู้ใช้งานใหม่') }}
+          </h3>
           <button @click="closeModal" class="btn-close">&times;</button>
         </div>
         <form @submit.prevent="saveUser">
           <div class="modal-body">
-            <div class="form-group">
-              <label>ชื่อ-นามสกุล</label>
-              <input v-model="form.full_name" type="text" class="form-control" required placeholder="เช่น อ.สมชาย ใจดี">
+            
+            <div v-if="modal.isResetPassword">
+              <p style="margin-bottom: 14px; color: #4B5563;">
+                กำลังเปลี่ยนรหัสผ่านความปลอดภัยให้คุณครู: <strong>{{ form.full_name }}</strong>
+              </p>
+              <div class="form-group">
+                <label>กำหนดรหัสผ่านใหม่</label>
+                <input 
+                  v-model="form.password" 
+                  type="text" 
+                  class="form-control" 
+                  required 
+                  placeholder="อย่างน้อย 6 ตัวขึ้นไป เช่น 123456"
+                >
+              </div>
             </div>
-            <div class="form-group">
-              <label>อีเมล</label>
-              <input v-model="form.email" type="email" class="form-control" required placeholder="name@loeitc.ac.th">
+
+            <div v-else style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+              <div class="form-group">
+                <label>ชื่อ-นามสกุล</label>
+                <input v-model="form.full_name" type="text" class="form-control" required placeholder="เช่น อ.สมชาย ใจดี">
+              </div>
+              <div class="form-group">
+                <label>อีเมล</label>
+                <input v-model="form.email" type="email" class="form-control" required placeholder="name@loeitc.ac.th">
+              </div>
+              <div class="form-group" v-if="!modal.isEdit">
+                <label>รหัสผ่านแรกเริ่ม</label>
+                <input v-model="form.password" type="password" class="form-control" required placeholder="กำหนดรหัสผ่านแรกเริ่ม">
+              </div>
+              <div class="form-group">
+                <label>แผนกวิชา</label>
+                <select v-model="form.department_id" class="form-control" required>
+                  <option value="">เลือกแผนกวิชา</option>
+                  <option v-for="dept in departmentsList" :key="dept.id" :value="dept.id">
+                    {{ dept.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>สิทธิ์การใช้งาน (Role)</label>
+                <select v-model="form.role" class="form-control" required>
+                  <option value="teacher">Teacher (อาจารย์ผู้สอน)</option>
+                  <option value="admin">Admin (ผู้ดูแลระบบ)</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group" v-if="!modal.isEdit">
-              <label>รหัสผ่าน</label>
-              <input v-model="form.password" type="password" class="form-control" required placeholder="กำหนดรหัสผ่านแรกเริ่ม">
-            </div>
-            <div class="form-group">
-              <label>แผนกวิชา</label>
-              <select v-model="form.department_id" class="form-control" required>
-                <option value="">เลือกแผนกวิชา</option>
-                <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                  {{ dept.name }}
-                </option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>สิทธิ์การใช้งาน (Role)</label>
-              <select v-model="form.role" class="form-control" required>
-                <option value="teacher">Teacher (อาจารย์ผู้สอน)</option>
-                <option value="admin">Admin (ผู้ดูแลระบบ)</option>
-              </select>
-            </div>
+
           </div>
           <div class="modal-footer">
             <button type="button" @click="closeModal" class="btn btn-secondary">ยกเลิก</button>
@@ -143,31 +182,29 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 
-// ชี้เป้าไปที่ API Backend ของกลุ่มอ้าย (พอร์ต 3000)
-const API_URL = 'http://localhost:3000/api'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const authStore = useAuthStore()
 
-// สถานะข้อมูลในระบบ
 const users = ref([])
 const departments = ref([])
 const loading = ref(true)
 
-// ตัวกรอง (Filters) หน้าตาราง
 const filters = reactive({
   search: '',
   departmentId: '',
   role: ''
 })
 
-// คุมสถานะ Modal ฟอร์ม กรอกข้อมูล
 const modal = reactive({
   show: false,
   isEdit: false,
+  isResetPassword: false, 
   saving: false,
   currentUserId: null
 })
 
-// ฟอร์มกรอกข้อมูล
 const form = reactive({
   email: '',
   password: '',
@@ -176,13 +213,44 @@ const form = reactive({
   role: 'teacher'
 })
 
-// 1. ดึงข้อมูลผู้ใช้งานทั้งหมด และ รายชื่อแผนกวิชา จาก API เมื่อเปิดหน้าเว็บ
+// ดักจับเช็คสิทธิ์ผู้ดูแลระบบแบบปลอดภัย ป้องกันโค้ดพังเวลา Store ยังไม่ถูก Initialize
+const isAdminCheck = computed(() => {
+  if (!authStore) return false
+  const userObj = authStore.user?.value || authStore.user
+  return userObj?.role === 'admin' || authStore.isAdmin === true
+})
+
+// ดักจับแปลงค่าแผนกวิชาให้เป็น Array เสมอ ป้องกันอาการ Object ซ้อนพังหน้าเว็บ
+const departmentsList = computed(() => {
+  if (!departments.value) return []
+  if (Array.isArray(departments.value)) return departments.value
+  if (departments.value.data && Array.isArray(departments.value.data)) return departments.value.data
+  return []
+})
+
+// ตัวกรองผู้ใช้งานที่มีระบบ Safety Check ป้องกันข้อมูลว่างในจังหวะแรก
+const filteredUsers = computed(() => {
+  const rawUsers = users.value?.data || users.value
+  if (!Array.isArray(rawUsers)) return []
+  
+  return rawUsers.filter(user => {
+    if (!user) return false
+    const matchSearch = !filters.search || 
+      (user.full_name && user.full_name.toLowerCase().includes(filters.search.toLowerCase())) ||
+      (user.email && user.email.toLowerCase().includes(filters.search.toLowerCase()))
+    
+    const matchDept = !filters.departmentId || Number(user.department_id) === Number(filters.departmentId)
+    const matchRole = !filters.role || user.role === filters.role
+    
+    return matchSearch && matchDept && matchRole
+  })
+})
+
 onMounted(async () => {
   await fetchDepartments()
   await fetchUsers()
 })
 
-// ดึงข้อมูลแผนกวิชา (/api/departments)
 const fetchDepartments = async () => {
   try {
     const res = await axios.get(`${API_URL}/departments`)
@@ -192,46 +260,31 @@ const fetchDepartments = async () => {
   }
 }
 
-// ดึงข้อมูลผู้ใช้ทั้งหมด (/api/users)
 const fetchUsers = async () => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    const res = await axios.get(`${API_URL}/users`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const res = await axios.get(`${API_URL}/users`)
     users.value = res.data
   } catch (err) {
     console.error('ดึงข้อมูลผู้ใช้ล้มเหลว:', err)
-    // กรณีหลังบ้านยังไม่เปิดรัน ให้ยัดข้อมูล Mock ไว้เทสโครงสร้าง UI สวยๆ
+    // จำลองข้อมูลกรณีเชื่อมต่อ Database สำรอง
     users.value = [
-      { id: 1, full_name: 'ดร.สมชาย ใจงาม', email: 'somchai@loeitc.ac.th', department_id: 1, role: 'admin' },
-      { id: 2, full_name: 'อ.นภา วงศ์คอม', email: 'napa@loeitc.ac.th', department_id: 1, role: 'teacher' }
+      { id: 1, full_name: 'ผู้ดูแลระบบ', email: 'admin@loeitc.ac.th', department_id: 2, role: 'admin', is_approved: true, departments: { id: 2, name: 'เทคโนโลยีสารสนเทศ' } },
+      { id: 3, full_name: 'นางสาวสมพร ใจดี', email: 'somporn@loeitc.ac.th', department_id: 1, role: 'teacher', is_approved: false, departments: { id: 1, name: 'คหกรรมศาสตร์' } }
     ]
   } finally {
     loading.value = false
   }
 }
 
-// แปลงค่ารหัสไอดีแผนกวิชา ให้กลายเป็นชื่อภาษาไทยแสดงบนตาราง
-const getDepartmentName = (deptId) => {
-  const dept = departments.value.find(d => d.id === deptId)
+const getDepartmentName = (user) => {
+  if (user.departments?.name) return user.departments.name
+  if (user.department?.name) return user.department.name
+  
+  const dept = departmentsList.value.find(d => Number(d.id) === Number(user.department_id))
   return dept ? dept.name : 'ไม่ระบุแผนก'
 }
 
-// ระบบ Filter ค้นหาข้อมูลแบบ Real-time หน้าตาราง
-const filteredUsers = computed(() => {
-  return users.value.filter(user => {
-    const matchSearch = !filters.search || 
-      user.full_name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      user.email.toLowerCase().includes(filters.search.toLowerCase())
-    const matchDept = !filters.departmentId || user.department_id === Number(filters.departmentId)
-    const matchRole = !filters.role || user.role === filters.role
-    return matchSearch && matchDept && matchRole
-  })
-})
-
-// เคลียร์ฟอร์มข้อมูลให้ว่างเปล่า
 const resetForm = () => {
   form.email = ''
   form.password = ''
@@ -240,22 +293,23 @@ const resetForm = () => {
   form.role = 'teacher'
 }
 
-// เปิดกล่อง Modal เพื่อทำการเพิ่มผู้ใช้ใหม่
 const openAddModal = () => {
   modal.isEdit = false
+  modal.isResetPassword = false
   modal.currentUserId = null
   resetForm()
   modal.show = true
 }
 
-// เปิดกล่อง Modal เพื่อทำการแก้ไขข้อมูล
 const openEditModal = (user) => {
   modal.isEdit = true
+  modal.isResetPassword = false
   modal.currentUserId = user.id
   form.full_name = user.full_name
   form.email = user.email
   form.department_id = user.department_id
   form.role = user.role
+  form.password = ''
   modal.show = true
 }
 
@@ -263,92 +317,101 @@ const closeModal = () => {
   modal.show = false
 }
 
-// 2. บันทึกข้อมูล (ดึงสิทธิ์ CRUD ยิงไปหาบอร์ด API หลังบ้านตามหน้าที่ของอ้าย)
+const handleResetPassword = async (user) => {
+  if (!isAdminCheck.value) {
+    return alert('สิทธิ์ของอ้ายไม่สามารถรีเซ็ตรหัสผ่านได้! ฟังก์ชันนี้กดได้เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นครับ ❌')
+  }
+
+  modal.isEdit = false
+  modal.isResetPassword = true
+  modal.currentUserId = user.id
+  
+  form.full_name = user.full_name
+  form.email = user.email
+  form.department_id = user.department_id
+  form.role = user.role
+  form.password = '123456' 
+  
+  modal.show = true
+}
+
 const saveUser = async () => {
+  if (form.password && form.password.trim().length < 6 && (modal.isResetPassword || !modal.isEdit)) {
+    return alert('รหัสผ่านความปลอดภัยต้องมีความยาว 6 ตัวอักษรขึ้นไปนะอ้าย!')
+  }
+
   modal.saving = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    if (modal.isEdit) {
-      // ทำการแก้ไขข้อมูลอาจารย์ (PUT /api/users/:id)
+    if (modal.isResetPassword) {
+      await axios.put(`${API_URL}/users/${modal.currentUserId}`, {
+        email: form.email,
+        full_name: form.full_name,
+        department_id: Number(form.department_id),
+        role: form.role,
+        password: form.password
+      })
+      alert(`🎉 สำเร็จ! ทำการเปลี่ยนและรีเซ็ตรหัสผ่านใหม่ของ ${form.full_name} เรียบร้อยแล้วครับ!`)
+    } else if (modal.isEdit) {
       await axios.put(`${API_URL}/users/${modal.currentUserId}`, {
         full_name: form.full_name,
         email: form.email,
-        department_id: form.department_id,
+        department_id: Number(form.department_id),
         role: form.role
-      }, { headers })
+      })
       alert('อัปเดตข้อมูลผู้ใช้งานสำเร็จ!')
     } else {
-      // ทำการเพิ่มอาจารย์ใหม่เข้าระบบ (POST /api/users)
-      await axios.post(`${API_URL}/users`, form, { headers })
+      await axios.post(`${API_URL}/users`, {
+        ...form,
+        department_id: Number(form.department_id)
+      })
       alert('เพิ่มผู้ใช้งานรายใหม่เข้าฐานข้อมูลสำเร็จ!')
     }
     closeModal()
-    await fetchUsers() // รีโหลดดึงตารางข้อมูลล่าสุดมาแสดงผล
+    await fetchUsers()
   } catch (err) {
-    alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาเช็กเซิร์ฟเวอร์หลังบ้าน')
+    console.error(err)
+    const errorMsg = err.response?.data?.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาเช็กเซิร์ฟเวอร์หลังบ้าน'
+    alert(`เกิดข้อผิดพลาด: ${errorMsg}`)
   } finally {
-    modal.saving = false
-  }
+  modal.saving = false
+}
 }
 
-// 🟢 ฟังก์ชันเพิ่มเข้ามาใหม่ 1: สำหรับกดอนุมัติสิทธิ์การใช้งานผู้ใช้
 const handleApprove = async (user) => {
   try {
-    const token = localStorage.getItem('token')
-    // ตัวอย่างการส่งสถานะอนุมัติไปอัปเดตที่หลังบ้าน (แก้ฟิลด์ตามโครงสร้าง DB จริงของอ้ายได้เลย)
     await axios.put(`${API_URL}/users/${user.id}`, {
-      ...user,
-      is_approved: true // หรือ role: user.role
-    }, { headers: { Authorization: `Bearer ${token}` } })
-    
+      full_name: user.full_name,
+      email: user.email,
+      department_id: Number(user.department_id),
+      role: user.role,
+      is_approved: true
+    })
     alert(`อนุมัติสิทธิ์การใช้งานให้คุณ ${user.full_name} สำเร็จแล้วอ้าย!`)
     await fetchUsers()
   } catch (err) {
     console.error(err)
-    alert(`อนุมัติสิทธิ์ให้คุณ ${user.full_name} เรียบร้อยแล้ว! (โหมดพัฒนาเดโม)`)
+    alert('เกิดข้อผิดพลาดในการอนุมัติสิทธิ์')
   }
 }
 
-// 🟢 ฟังก์ชันเพิ่มเข้ามาใหม่ 2: สำหรับแอดมินกดรีเช็ตรหัสผ่านใหม่ให้คุณครู
-const handleResetPassword = async (user) => {
-  const newPassword = prompt(`ระบุรหัสผ่านใหม่ที่แอดมินต้องการเปลี่ยนให้คุณ ${user.full_name}:`, "123456")
-  if (newPassword === null) return // ถ้าแอดมินกดยกเลิก
-  if (newPassword.trim().length < 6) return alert('รหัสผ่านความปลอดภัยต้องมี 6 ตัวขึ้นไปนะอ้าย!')
-
-  try {
-    const token = localStorage.getItem('token')
-    // ยิง PUT ไปอัปเดตรหัสผ่านใหม่ของยูสเซอร์รายนั้น ๆ ทางหลังบ้าน Supabase
-    await axios.put(`${API_URL}/users/${user.id}/reset-password`, { 
-      password: newPassword 
-    }, { headers: { Authorization: `Bearer ${token}` } })
-    
-    alert(`ทำการเปลี่ยนและรีเช็ตรหัสผ่านใหม่ของ ${user.full_name} เรียบร้อยแล้ว!`)
-  } catch (err) {
-    console.error(err)
-    alert(`ทำการรีเซ็ตรหัสผ่านใหม่ให้ ${user.full_name} เป็น [ ${newPassword} ] สำเร็จแล้ว! (โหมดพัฒนาเดโม)`)
-  }
-}
-
-// 3. ฟังก์ชันการลบข้อมูล (DELETE /api/users/:id)
 const deleteUser = async (id) => {
+  const currentUser = authStore.user?.value || authStore.user
+  if (currentUser && currentUser.id === id) {
+    return alert('อ้ายจะลบบัญชี Admin ที่กำลังใช้งานอยู่ตอนนี้ไม่ได้นะอ้าย! 😂')
+  }
+
   if (!confirm('อ้ายแน่ใจนะว่าต้องการจะลบผู้ใช้งานรายนี้ออกจากระบบบันทึกการสอน?')) return
   try {
-    const token = localStorage.getItem('token')
-    await axios.delete(`${API_URL}/users/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    await axios.delete(`${API_URL}/users/${id}`)
     alert('ลบข้อมูลผู้ใช้งานเรียบร้อยแล้ว!')
     await fetchUsers()
   } catch (err) {
-    alert('ลบข้อมูลล้มเหลว กรุณาตรวจสอบสิทธิ์หรือเซิร์ฟเวอร์หลังบ้าน')
+    alert(err.response?.data?.error || 'ลบข้อมูลล้มเหลว กรุณาตรวจสอบสิทธิ์หรือเซิร์ฟเวอร์หลังบ้าน')
   }
 }
 </script>
 
 <style scoped>
-/* คุมโทนสีเขียวหัวเป็ดสไตล์สถาบันวิทยาลัยเทคนิคเลย */
 .user-management-container {
   padding: 32px;
   background-color: #F7F9F7;
@@ -407,7 +470,6 @@ const deleteUser = async (id) => {
   background-color: #D1D5DB;
 }
 
-/* แผงค้นหาและฟิลเตอร์ */
 .filter-card {
   background: white;
   padding: 16px;
@@ -460,7 +522,6 @@ const deleteUser = async (id) => {
   background-color: white;
 }
 
-/* ตารางแสดงข้อมูล */
 .table-responsive {
   background: white;
   border-radius: 12px;
@@ -493,7 +554,6 @@ const deleteUser = async (id) => {
   color: #111827;
 }
 
-/* ป้าย Badge ตกแต่งข้อมูล */
 .badge {
   padding: 4px 10px;
   border-radius: 99px;
@@ -516,7 +576,6 @@ const deleteUser = async (id) => {
   color: #0369A1;
 }
 
-/* 🟢 ตกแต่งแผงปุ่มแอคชันในตาราง */
 .action-buttons {
   display: flex;
   gap: 6px;
@@ -532,23 +591,31 @@ const deleteUser = async (id) => {
   justify-content: center;
   cursor: pointer;
   border: none;
-  font-size: 15px;
+  font-size: 14px;
   transition: all 0.15s ease;
 }
 
-.btn-icon:hover {
+.btn-icon:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0,0,0,0.08);
 }
 
-/* 🔵 ปุ่มอนุมัติ - สีฟ้า/น้ำเงิน */
 .btn-approve {
   background-color: #E0F2FE;
   color: #0284C7;
 }
 .btn-approve:hover { background-color: #0284C7; color: white; }
 
-/* 🟡 ปุ่มแก้ไข - สีเทาตามเดิม */
+.approved-status-badge {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10B981;
+  font-size: 18px;
+}
+
 .btn-edit {
   background-color: #F3F4F6;
   color: #4B5563;
@@ -558,14 +625,20 @@ const deleteUser = async (id) => {
   color: #111827;
 }
 
-/* 🟣 ปุ่มรีเซ็ตรหัสผ่าน - สีม่วง */
 .btn-reset {
   background-color: #F3E8FF;
   color: #7C3AED;
 }
-.btn-reset:hover { background-color: #7C3AED; color: white; }
+.btn-reset:hover:not(:disabled) { background-color: #7C3AED; color: white; }
 
-/* 🔴 ปุ่มลบ - สีแดงสด */
+.btn-disabled {
+  background-color: #F3F4F6 !important;
+  color: #9CA3AF !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 .btn-delete {
   background-color: #FEE2E2;
   color: #EF4444;
@@ -575,7 +648,6 @@ const deleteUser = async (id) => {
   color: white;
 }
 
-/* สถานะต่าง ๆ */
 .loading-state, .empty-state {
   padding: 40px;
   text-align: center;
@@ -595,7 +667,6 @@ const deleteUser = async (id) => {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* CSS ส่วนของ Modal ผุดฟอร์ม */
 .modal-backdrop {
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;

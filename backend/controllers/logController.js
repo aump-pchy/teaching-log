@@ -108,7 +108,7 @@ async function updateLog(req, res) {
     const { data: log, error: findError } = await supabase
       .from('teaching_logs')
       .select('user_id')
-      .eq('id', id)
+      .eq('id', id)  
       .single();
 
     if (findError || !log) {

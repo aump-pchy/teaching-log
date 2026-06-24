@@ -1,17 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
+/* 1. 🟢 กลุ่มนำเข้าฟอนต์จากภายนอก (ต้องอยู่บรรทัดบนสุดของไฟล์เสมอ) */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Sarabun', sans-serif; }
+/* 2. 🟢 ตามด้วยกลุ่มคำสั่งระบบของ Tailwind */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-/* นำเข้าฟอนต์ TH Sarabun PSK */
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+/* 3. 🟢 สไตล์ Custom เริ่มต้นของระบบ */
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
 
-/* ตั้งค่า TH Sarabun PSK เป็นหลักทั่วทั้งเว็บและงานพิมพ์ */
+body { 
+  font-family: 'Sarabun', sans-serif; 
+}
+
+/* 🟢 บังคับใช้ฟอนต์ 'Sarabun' ให้กับอินพุตและปุ่มทั้งหมด */
 body, input, textarea, select, button {
-  font-family: 'TH Sarabun PSK', 'Sarabun', sans-serif !important;
+  font-family: 'Sarabun', sans-serif !important;
 }
 
 /* เพิ่มเติมกลุ่มปุ่มสั่งงานขวาแบบเป็นคู่เด่นชัด */
@@ -20,7 +28,7 @@ body, input, textarea, select, button {
   gap: 10px;
 }
 
-/* 🟢 ปุ่มย้อนกลับดีไซน์สีเขียวให้เข้าชุดกับเพื่อน */
+/* ปุ่มย้อนกลับดีไซน์สีเขียวให้เข้าชุดกับเพื่อน */
 .back-btn-green {
   display: inline-flex;
   align-items: center;
@@ -52,7 +60,7 @@ body, input, textarea, select, button {
   transition: background-color 0.2s ease;
 }
 .edit-toggle-btn:hover { background-color: #374151; }
-.edit-toggle-btn.editing-active { background-color: #dc2626; } /* สีแดงเมื่อเปิดโหมดแก้ข้อมูล */
+.edit-toggle-btn.editing-active { background-color: #dc2626; } 
 
 /* 🟠 ปุ่มบันทึกสไตล์วัสดุสีส้ม-เหลืองนวลดูเก๋ไก๋ตัดกับธีมหลัก */
 .save-data-btn {
@@ -91,11 +99,34 @@ input:disabled, textarea:disabled, select:disabled {
   background-color: transparent !important;
 }
 
-/* ส่วนที่เหลือคงไว้ตามเดิม */
-.page-title-mode { font-size: 15px; font-weight: 600; color: #166534; background: #e8f5e9; padding: 4px 12px; border-radius: 15px; }
-.form-input-grid { display: grid; grid-template-cols: 2fr 1fr; gap: 15px; text-align: left; }
-.input-block { display: flex; flex-direction: column; gap: 4px; text-align: left; }
-.input-block label { font-size: 15px; font-weight: bold; color: #374151; }
+/* ส่วนที่เหลือคงไว้ตามเดิม (แก้ไขจุดพิมพ์ผิดเรียบร้อย) */
+.page-title-mode { 
+  font-size: 15px; 
+  font-weight: 600; 
+  color: #166534; 
+  background: #e8f5e9; 
+  padding: 4px 12px; 
+  border-radius: 15px; 
+}
+
+.form-input-grid { 
+  display: grid; 
+  grid-template-columns: 2fr 1fr; /* 🟢 แก้ไขจาก grid-template-cols */
+  gap: 15px; 
+  text-align: left; 
+}
+
+.input-block { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 4px; 
+  text-align: left; 
+}
+.input-block label { 
+  font-size: 15px; 
+  font-weight: bold; 
+  color: #374151; 
+}
 
 .editable-input {
   border: 1px solid #cbd5e1;
