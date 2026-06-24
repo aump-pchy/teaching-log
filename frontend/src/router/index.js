@@ -21,6 +21,7 @@ const routes = [
 
   // คนที่ 3: Log List
   { path: '/logs', component: () => import('../views/LogListView.vue'), meta: { requiresAuth: true } },
+  { path: '/admin/config', component: () => import('../views/AdminConfigView.vue'), meta: { requiresAuth: true, adminOnly: true } },
 
   // คนที่ 4: Log Detail
   { path: '/logs/:id', component: () => import('../views/LogDetailView.vue'), meta: { requiresAuth: true } },
