@@ -1,14 +1,30 @@
 <template>
+  <!-- NAVBAR -->
+  <header class="app-navbar print-hidden">
+    <div class="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center shrink-0">
+      <i class="fa-solid fa-book-open-reader text-lg text-white"></i>
+    </div>
+    <div>
+      <div class="navbar-title">บันทึกการจัดการเรียนรู้</div>
+      <div class="navbar-subtitle">สำหรับสถานประกอบการ ภาคเรียนที่ {{ logData.semester }}/{{ logData.academic_year }}</div>
+    </div>
+  </header>
+
+  <!-- CONTROL PANEL -->
   <div class="control-panel print-hidden">
-    <router-link to="/logs" class="back-btn-green">⬅ กลับหน้ารายการ</router-link>
+    <router-link to="/logs" class="back-btn-primary">
+      <i class="fa-solid fa-arrow-left text-xs"></i>
+      กลับหน้ารายการ
+    </router-link>
     <div class="action-buttons-group">
       <button @click="toggleEditMode" class="edit-toggle-btn" :class="{ 'editing-active': isEditing }">
         {{ isEditing ? '💾 บันทึกข้อมูล' : '📝 แก้ไขข้อมูล' }}
       </button>
-      <button @click="exportPDF" class="export-pdf-blue-btn">🖨️ Export PDF (A4 ครบ 5 หน้า)</button>
+      <button @click="exportPDF" class="export-pdf-blue-btn">🖨️ Export PDF </button>
     </div>
   </div>
 
+  <div class="page-wrapper">
   <div class="document-container">
 
     <div class="pdf-page-sheet">
@@ -186,6 +202,10 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- หน้าที่ 3: ตารางบันทึกการตรวจสอบ -->
+    <div class="pdf-page-sheet">
       <div class="official-border-review-box mt-12">
         <div class="review-flex-split">
           <div class="split-col border-right-black">
@@ -282,6 +302,7 @@
     </div>
 
   </div>
+  </div><!-- end page-wrapper -->
 </template>
 
 <script setup>
@@ -353,44 +374,73 @@ body, input, textarea, select, button, span, p, div, h1, h2, h3, h4, th, td {
   font-family: 'TH Sarabun PSK', 'Sarabun', sans-serif !important;
 }
 
+/* ======= NAVBAR (matches LogFormView header) ======= */
+.app-navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: linear-gradient(to right, #14532d, #15803d);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.navbar-title { color: #ffffff; font-size: 16px; font-weight: 700; line-height: 1.2; }
+.navbar-subtitle { color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 2px; }
+
+/* ======= PAGE WRAPPER ======= */
+.page-wrapper {
+  background-color: #f0fdf4;
+  min-height: 100vh;
+  padding-top: 100px;
+  padding-bottom: 48px;
+}
+
+/* ======= CONTROL PANEL ======= */
 .control-panel {
+  position: sticky;
+  top: 88px;
+  z-index: 90;
   max-width: 210mm;
-  margin: 10px auto;
+  margin: 0 auto 16px auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 10px 15px;
-  background: #f3f4f6;
-  border-radius: 6px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  border: 1px solid #d1fae5;
 }
 
-/* 🟢 ปุ่มย้อนกลับปรับเปลี่ยนสีเขียวตามสั่ง */
-.back-btn-green {
+.back-btn-primary {
   display: inline-flex;
   align-items: center;
-  background-color: #e8f5e9;
-  color: #166534;
+  gap: 8px;
+  background: linear-gradient(to right, #16a34a, #166534);
+  color: #ffffff;
   text-decoration: none;
-  font-weight: bold;
-  font-size: 16px;
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: 1px solid #c8e6c9;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(22,163,74,0.3);
   transition: all 0.2s ease;
 }
-.back-btn-green:hover {
-  background-color: #c8e6c9;
-  color: #1b5e20;
+.back-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(22,163,74,0.35);
 }
 
 .action-buttons-group { display: flex; gap: 10px; }
 
-/* 📝/💾 ปุ่มแก้ไขและบันทึก (แชร์ปุ่มสลับสีสลับร่างร่วมกัน) */
 .edit-toggle-btn {
-  background-color: #4b5563; /* ค่าเริ่มต้นโหมดล็อกเป็นสีเทา (แก้ไขข้อมูล) */
+  background-color: #4b5563;
   color: white;
   border: none;
-  padding: 8px 15px;
+  padding: 7px 16px;
   border-radius: 6px;
   font-size: 15px;
   font-weight: 600;
@@ -399,21 +449,14 @@ body, input, textarea, select, button, span, p, div, h1, h2, h3, h4, th, td {
   transition: background-color 0.2s ease;
 }
 .edit-toggle-btn:hover { background-color: #374151; }
+.edit-toggle-btn.editing-active { background-color: #16a34a !important; }
+.edit-toggle-btn.editing-active:hover { background-color: #15803d !important; }
 
-/* เมื่อเปิดโหมดแก้ไข (isEditing = true) คลาสนี้จะทำงาน ปุ่มจะสลับเป็นสีส้มบันทึกข้อมูลทันที */
-.edit-toggle-btn.editing-active {
-  background-color: #d97706 !important;
-}
-.edit-toggle-btn.editing-active:hover {
-  background-color: #b45309 !important;
-}
-
-/* 🔵 ปุ่ม Export PDF ตกแต่งด้วยดีไซน์สีฟ้าตามสั่ง */
 .export-pdf-blue-btn {
   background-color: #0284c7;
   color: white;
   border: none;
-  padding: 8px 15px;
+  padding: 7px 16px;
   border-radius: 6px;
   font-size: 15px;
   font-weight: 600;
@@ -556,9 +599,47 @@ input:disabled, textarea:disabled, select:disabled {
 /* =================================================== */
 @media print {
   @page { size: A4 portrait; margin: 0; }
-  body { background: #ffffff; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body { 
+    background: #ffffff; 
+    margin: 0; 
+    padding: 0; 
+    -webkit-print-color-adjust: exact; 
+    print-color-adjust: exact; 
+  }
+
   .print-hidden { display: none !important; }
-  .document-container { width: 210mm !important; margin: 0 !important; padding: 0 !important; }
-  .pdf-page-sheet { width: 210mm !important; height: 297mm !important; border: none !important; box-shadow: none !important; page-break-after: always !important; break-after: page !important; }
+
+  /* ✅ เพิ่ม reset page-wrapper */
+  .page-wrapper {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    background: #ffffff !important;
+    min-height: unset !important;
+  }
+
+  .document-container { 
+    width: 210mm !important; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+  }
+
+  /* ✅ เปลี่ยน height → min-height และเพิ่ม overflow: hidden */
+  .pdf-page-sheet { 
+    width: 210mm !important; 
+    height: 297mm !important;
+    overflow: hidden !important;        /* ← ตัดเนื้อหาที่ล้นออก */
+    border: none !important; 
+    box-shadow: none !important;
+    margin-bottom: 0 !important;
+    padding: 8mm 15mm 12mm 15mm !important;
+    page-break-after: always !important; 
+    break-after: page !important;
+  }
+
+  .pdf-page-sheet:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
 }
 </style>

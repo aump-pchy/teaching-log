@@ -25,6 +25,8 @@ const routes = [
   // คนที่ 4: Log Detail
   { path: '/logs/:id', component: () => import('../views/LogDetailView.vue'), meta: { requiresAuth: true } },
 
+  { path: '/departments', component: () => import('../views/DepartmentsView.vue'), meta: { requiresAuth: true } },
+
   // default
   { path: '/', component: () => import('../views/LandingView.vue') },
 ]
