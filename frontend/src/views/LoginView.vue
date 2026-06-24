@@ -60,8 +60,7 @@
           <div class="field" :class="{ error: errors.password }">
             <div class="label-row">
               <label for="password">รหัสผ่าน</label>
-              <!-- 🟢 ลิงก์ลืมรหัสผ่าน ขวาบนของช่องกรอก -->
-              <a @click.prevent="handleForgotPassword" href="#" class="link-forgot">ลืมรหัสผ่าน?</a>
+              <router-link to="/forgot-password" class="link-forgot">ลืมรหัสผ่าน?</router-link>
             </div>
             <div class="input-wrap">
               <i class="ti ti-lock input-icon"></i>
@@ -100,7 +99,6 @@
           </button>
         </form>
 
-        <!-- 🟢 ปุ่มสมัครสมาชิกย้ายมาอยู่ตรงนี้ เพื่อความง่ายในการกดใช้งาน -->
         <div class="register-hint">
           <span>ยังไม่มีบัญชีใช้งาน?</span>
           <router-link to="/register" class="link-register">สมัครสมาชิกใหม่</router-link>
@@ -159,11 +157,6 @@ async function handleLogin() {
   } finally {
     loading.value = false
   }
-}
-
-// 🟢 ฟังก์ชันเมื่อกดลืมรหัสผ่าน
-function handleForgotPassword() {
-  alert('ระบบรีเซ็ตรหัสผ่านอัตโนมัติกำลังปิดปรับปรุงชั่วคราว \nกรุณานำอีเมลสถาบันไปแจ้งขอเปลี่ยนรหัสผ่านใหม่ที่งานศูนย์ข้อมูล หรือ หัวหน้าแผนกวิชาคอมพิวเตอร์ของอ้ายได้เลยครับ!')
 }
 </script>
 
@@ -338,7 +331,6 @@ function handleForgotPassword() {
   gap: 6px;
 }
 
-/* 🟢 จัดโครงสร้างให้ข้อความรหัสผ่าน กับ ลิงก์ลืมรหัสผ่าน อยู่ขนานกัน */
 .label-row {
   display: flex;
   justify-content: space-between;
@@ -351,7 +343,6 @@ function handleForgotPassword() {
   color: #374151;
 }
 
-/* 🟢 ตกแต่งปุ่มลืมรหัสผ่าน */
 .link-forgot {
   font-size: 13px;
   color: #0F6E56;
@@ -475,7 +466,6 @@ function handleForgotPassword() {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* 🟢 ตกแต่งส่วนบล็อกแนะนำสมัครสมาชิกใหม่ */
 .register-hint {
   display: flex;
   justify-content: center;
