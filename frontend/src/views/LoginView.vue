@@ -152,7 +152,7 @@ async function handleLogin() {
   if (!validate()) return
   loading.value = true
   try {
-    await authStore.login(form.email, form.password)
+    //await authStore.login(form.email, form.password)
     router.push('/logs')
   } catch (err) {
     errors.global = err?.response?.data?.error || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
