@@ -8,8 +8,8 @@ const {
   deleteDepartment
 } = require('../controllers/departmentController')
 
-// GET /api/departments  (ทุกคนที่ login แล้วเข้าถึงได้ — ใช้ใน dropdown)
-router.get('/', authMiddleware, getAllDepartments)
+// GET /api/departments  (ทุกคนเข้าถึงได้ — ใช้ใน dropdown, ไม่ต้อง login)
+router.get('/', getAllDepartments)
 
 // POST /api/departments
 router.post('/', authMiddleware, adminOnly, createDepartment)
