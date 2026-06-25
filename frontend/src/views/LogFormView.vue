@@ -339,7 +339,7 @@
             :disabled="isSubmitting"
             class="btn btn-success"
           >
-            <i class="fa-solid fa-floppy-disk text-xs"></i>
+            <i class="fa-solid fa-floppy-disk text-xs"></i> 
             {{ isSubmitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล' }}
           </button>
         </div>
@@ -364,10 +364,32 @@
 <script setup>
 import { ref, reactive, defineComponent, h } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const router    = useRouter()
+const API_URL   = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const isSubmitting = ref(false)
 const toastMessage = ref('')
+
+const SECTION_KEY_MAP = {
+  'รูปแบบจัดการเรียนรู้': 'method',
+  'วิธีการให้เนื้อหา': 'content',
+  'สื่อที่ใช้ / แหล่งเรียนรู้': 'media',
+  'โปรแกรม / E-Learning / Application': 'app',
+  'โปรแกรม / E-learning / Application': 'app',
+  'การประเมินผล': 'evaluation'
+}
+
+const toBooleanObject = (items) =>
+  items.reduce((acc, value) => ({ ...acc, [value]: true }), {})
+
+const normalizeSection = (categories) => {
+  if (!categories?.length) return 'other'
+  const firstMapped = categories
+    .map((label) => SECTION_KEY_MAP[label])
+    .find(Boolean)
+  return firstMapped || 'other'
+}
 
 // ── Inline sub-components (avoid extra files) ──────────────────────────────
 
@@ -576,7 +598,7 @@ const onDrop = (e) => {
 const processFiles = (files) => {
   files.forEach(f => {
     const reader = new FileReader()
-    reader.onload = (ev) => previews.value.push({ url: ev.target.result, name: f.name, categories: [] })
+    reader.onload = (ev) => previews.value.push({ file: f, url: ev.target.result, name: f.name, categories: [] })
     reader.readAsDataURL(f)
   })
 }
@@ -595,14 +617,75 @@ const toggleImageCategory = (previewIndex, category) => {
 }
 
 const submit = async () => {
+  if (isSubmitting.value) return
   isSubmitting.value = true
+
   try {
-    const id = Date.now().toString()
-    localStorage.setItem(`teaching-log-${id}`, JSON.stringify({ ...form, images: previews.value }))
+    const payload = {
+      week: 0,
+      date_from: form.schedule[0]?.date || '',
+      date_to: form.schedule[form.schedule.length - 1]?.date || '',
+      subject_name: form.subject,
+      subject_code: '',
+      topic: form.topic,
+      attendance: form.schedule.map((row) => ({
+        day: row.date || '',
+        period: row.time || '',
+        time: row.time || '',
+        total: Number(row.total) || 0,
+        attended: Number(row.present) || 0,
+        pct: row.total ? Math.round(((Number(row.present) || 0) / Number(row.total)) * 1000) / 10 : 0,
+        issue: ''
+      })),
+      methods: toBooleanObject(form.learningMethods),
+      content_methods: toBooleanObject(form.teachTechs),
+      media: toBooleanObject(form.media),
+      apps: toBooleanObject(form.programs),
+      evaluation: toBooleanObject(form.results),
+      outcome_cognitive: '',
+      outcome_psychomotor: '',
+      outcome_affective: '',
+      outcome_application: '',
+      problem: form.problem || '',
+      solution: form.solution || ''
+    }
+
+    if (!form.subject.trim() || !form.topic.trim()) {
+      toastMessage.value = 'กรุณากรอกชื่อวิชาและหัวข้อก่อนบันทึก'
+      isSubmitting.value = false
+      setTimeout(() => {
+        toastMessage.value = ''
+      }, 2200)
+      return
+    }
+
+    const { data: logData } = await axios.post(`${API_URL}/logs`, payload)
+    const logId = logData?.id
+    if (!logId) {
+      throw new Error('ไม่สามารถสร้าง log ใหม่ได้')
+    }
+
+    if (previews.value.length) {
+      for (const preview of previews.value) {
+        if (!preview.file) {
+          throw new Error('ไม่มีไฟล์ภาพสำหรับอัปโหลด')
+        }
+
+        const formData = new FormData()
+        formData.append('file', preview.file)
+        formData.append('caption', preview.name)
+        formData.append('section', normalizeSection(preview.categories))
+
+        await axios.post(`${API_URL}/logs/${logId}/images`, formData)
+      }
+    }
+
     toastMessage.value = 'บันทึกข้อมูลเรียบร้อยแล้ว'
-    setTimeout(() => {
-      router.push(`/logs/${id}`)
-    }, 700)
+    setTimeout(() => router.push(`/logs/${logId}`), 700)
+  } catch (err) {
+    console.error('LogForm submit error', err)
+    const serverMessage = err?.response?.data?.error || err?.message || 'เกิดข้อผิดพลาดในการส่งข้อมูล'
+    toastMessage.value = serverMessage
   } finally {
     isSubmitting.value = false
     setTimeout(() => {
