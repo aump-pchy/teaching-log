@@ -1,4 +1,24 @@
 <template>
+  <!-- Loading -->
+  <div v-if="loading" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0fdf4;">
+    <p style="color:#166534;font-size:16px;">⏳ กำลังโหลดข้อมูลบันทึกการสอนจาก Supabase API...</p>
+  </div>
+
+  <!-- Error -->
+  <div v-else-if="fetchError" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f0fdf4;gap:12px;">
+    <p style="color:#dc2626;font-size:16px;">❌ {{ fetchError }}</p>
+    <button @click="fetchLog" style="padding:8px 20px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;">ลองใหม่</button>
+  </div>
+
+  <template v-else>
+
+  <!-- Toast -->
+  <Transition name="fade">
+    <div v-if="toast.show" class="toast-box print-hidden" :class="toast.type === 'error' ? 'toast-error' : 'toast-success'">
+      {{ toast.message }}
+    </div>
+  </Transition>
+
   <!-- NAVBAR -->
   <header class="app-navbar print-hidden">
     <div class="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center shrink-0">
@@ -258,8 +278,18 @@
           <h4 class="evidence-title-head">1. รูปแบบการจัดการเรียนรู้</h4>
           <div class="image-double-grid mt-6">
             <div class="photo-card-box" v-for="(img, i) in appendixImages.section1" :key="i">
-              <div class="mock-image-view"><span class="mock-photo-icon">📸 รูปถ่ายกิจกรรม On-Site</span></div>
-              <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
+              <div class="mock-image-view">
+                <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
+                <label v-else-if="isEditing" class="upload-label">
+                  <span class="mock-photo-icon">📤 คลิกเพื่ออัปโหลดรูป</span>
+                  <input type="file" accept="image/*" style="display:none" @change="e => handleImageUpload(e, 'format')" />
+                </label>
+                <span v-else class="mock-photo-icon">📸 รูปถ่ายกิจกรรม On-Site</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
+                <button v-if="isEditing && img.id" @click="deleteImage(img.id)" class="del-img-btn">✕</button>
+              </div>
             </div>
           </div>
         </div>
@@ -267,8 +297,18 @@
           <h4 class="evidence-title-head">2. วิธีการให้เนื้อหา</h4>
           <div class="image-double-grid mt-6">
             <div class="photo-card-box" v-for="(img, i) in appendixImages.section2" :key="i">
-              <div class="mock-image-view"><span class="mock-photo-icon">📸 รูปถ่ายสาธิตการเรียนการสอน</span></div>
-              <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
+              <div class="mock-image-view">
+                <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
+                <label v-else-if="isEditing" class="upload-label">
+                  <span class="mock-photo-icon">📤 คลิกเพื่ออัปโหลดรูป</span>
+                  <input type="file" accept="image/*" style="display:none" @change="e => handleImageUpload(e, 'method')" />
+                </label>
+                <span v-else class="mock-photo-icon">📸 รูปถ่ายสาธิตการเรียนการสอน</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
+                <button v-if="isEditing && img.id" @click="deleteImage(img.id)" class="del-img-btn">✕</button>
+              </div>
             </div>
           </div>
         </div>
@@ -284,8 +324,18 @@
           <h4 class="evidence-title-head">3. สื่อที่ใช้/แหล่งเรียนรู้</h4>
           <div class="image-double-grid mt-6">
             <div class="photo-card-box" v-for="(img, i) in appendixImages.section3" :key="i">
-              <div class="mock-image-view"><span class="mock-photo-icon">📸 สื่อคอมพิวเตอร์ / สไลด์</span></div>
-              <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
+              <div class="mock-image-view">
+                <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
+                <label v-else-if="isEditing" class="upload-label">
+                  <span class="mock-photo-icon">📤 คลิกเพื่ออัปโหลดรูป</span>
+                  <input type="file" accept="image/*" style="display:none" @change="e => handleImageUpload(e, 'media')" />
+                </label>
+                <span v-else class="mock-photo-icon">📸 สื่อคอมพิวเตอร์ / สไลด์</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
+                <button v-if="isEditing && img.id" @click="deleteImage(img.id)" class="del-img-btn">✕</button>
+              </div>
             </div>
           </div>
         </div>
@@ -293,8 +343,18 @@
           <h4 class="evidence-title-head">4. โปรแกรม/แอปพลิเคชัน และ 5. การวัดผล</h4>
           <div class="image-double-grid mt-6">
             <div class="photo-card-box" v-for="(img, i) in appendixImages.section4_5" :key="i">
-              <div class="mock-image-view"><span class="mock-photo-icon">📸 ระบบ Google Classroom / การให้คะแนน</span></div>
-              <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
+              <div class="mock-image-view">
+                <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
+                <label v-else-if="isEditing" class="upload-label">
+                  <span class="mock-photo-icon">📤 คลิกเพื่ออัปโหลดรูป</span>
+                  <input type="file" accept="image/*" style="display:none" @change="e => handleImageUpload(e, 'app_eval')" />
+                </label>
+                <span v-else class="mock-photo-icon">📸 ระบบ Google Classroom / การให้คะแนน</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
+                <button v-if="isEditing && img.id" @click="deleteImage(img.id)" class="del-img-btn">✕</button>
+              </div>
             </div>
           </div>
         </div>
@@ -303,65 +363,343 @@
 
   </div>
   </div><!-- end page-wrapper -->
+
+  </template><!-- end v-else -->
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-// 🔥 เพิ่มตัวแปรสถานะเปิด/ปิดล็อกแบบฟอร์ม (เริ่มต้นเป็น false คือ ล็อกข้อมูลอยู่)
-const isEditing = ref(false);
+// ─── Config ──────────────────────────────────────────
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api`
 
-// 🔥 ฟังก์ชันปุ่มสลับร่าง แก้ไข และ บันทึกข้อมูลในปุ่มเดียวกัน
-const toggleEditMode = () => {
-  if (isEditing.value) {
-    // จังหวะที่เปิดแก้อยู่ แล้วผู้ใช้กดปุ่ม (ซึ่งตอนนี้กลายเป็นคำว่า "บันทึกข้อมูล")
-    saveData();
-  }
-  isEditing.value = !isEditing.value;
-};
+const route  = useRoute()
+const router = useRouter()
 
+// ─── State ───────────────────────────────────────────
+const loading    = ref(true)
+const saving     = ref(false)
+const fetchError = ref(null)
+const isEditing  = ref(false)
+const toast      = ref({ show: false, type: 'success', message: '' })
+
+// ─── Data refs ───────────────────────────────────────
 const logData = ref({
-  semester: '1', academic_year: '2569',
-  teacher_name: 'นายสมชาย สายโค้ด', department: 'เทคโนโลยีสารสนเทศ',
-  week: '12', start_date: '15 มิ.ย. 69', month: 'มิถุนายน', year: '2569',
-  subject_name: 'การพัฒนาเว็บแอปพลิเคชันเชิงรุกขั้นสูง', subject_code: '30901-2005',
-  topic: 'โครงสร้างข้อมูลสถาปัตยกรรมระบบ Front-end', supervisor_name: 'นายวิโรจน์ ยาบุษดี',
-  attendance_rows: [
-    { date: '15 มิ.ย. 69', period: '1-4', time_range: '08.30-12.30', total: '25', present: '25', percentage: '100%', remark: 'นักเรียนเข้าครบและส่งแล็บทันเวลา' },
-    { date: '16 มิ.ย. 69', period: '5-8', time_range: '13.30-17.30', total: '25', present: '24', percentage: '96%', remark: 'ลากิจ 1 คน (มีใบลาถูกต้อง)' },
-    { date: '17 มิ.ย. 69', period: '1-4', time_range: '08.30-12.30', total: '25', present: '25', percentage: '100%', remark: 'ปฏิบัติงานกลุ่มในสถานประกอบการดีเยี่ยม' },
-    { date: '', period: '', time_range: '', total: '', present: '', percentage: '', remark: '' },
-    { date: '', period: '', time_range: '', total: '', present: '', percentage: '', remark: '' },
-    { date: '', period: '', time_range: '', total: '', present: '', percentage: '', remark: '' }
-  ]
-});
+  semester: '', academic_year: '',
+  teacher_name: '', department: '',
+  week: '', start_date: '', month: '', year: '',
+  subject_name: '', subject_code: '',
+  topic: '', supervisor_name: '',
+  attendance_rows: Array(6).fill(null).map(() => ({
+    date: '', period: '', time_range: '', total: '', present: '', percentage: '', remark: ''
+  }))
+})
 
 const methodsData = ref({
-  format_onsite: true, format_onair: false, format_online: true, format_ondemand: false, format_onhand: false, format_other: false, format_other_detail: '',
-  method_lecture: true, method_demo: true, method_experiment: false, method_simulation: false, method_discussion: true, method_case: true, method_center: false, method_game: false, method_pjbl: true, method_stem: false, method_other: false, method_other_detail: '',
-  media_ppt: true, media_doc: true, media_book: false, media_real: true, media_ebook: false, media_worksheet: true, media_other: false, media_other_detail: '',
-  app_classroom: true, app_meet: false, app_zoom: false, app_line: true, app_facebook: false, app_youtube: true, app_other: false, app_other_detail: '',
-  eval_observe: true, eval_test: true, eval_work: true, eval_exercise: true, eval_other: false, eval_other_detail: ''
-});
+  format_onsite: false, format_onair: false, format_online: false,
+  format_ondemand: false, format_onhand: false, format_other: false, format_other_detail: '',
+  method_lecture: false, method_demo: false, method_experiment: false,
+  method_simulation: false, method_discussion: false, method_case: false,
+  method_center: false, method_game: false, method_pjbl: false, method_stem: false,
+  method_other: false, method_other_detail: '',
+  media_ppt: false, media_doc: false, media_book: false, media_real: false,
+  media_ebook: false, media_worksheet: false, media_other: false, media_other_detail: '',
+  app_classroom: false, app_meet: false, app_zoom: false, app_line: false,
+  app_facebook: false, app_youtube: false, app_other: false, app_other_detail: '',
+  eval_observe: false, eval_test: false, eval_work: false, eval_exercise: false,
+  eval_other: false, eval_other_detail: ''
+})
 
 const resultsData = ref({
-  knowledge: 'นักศึกษาเข้าใจความแตกต่างโครงสร้างสถาปัตยกรรมแบบ Component และเชื่อมต่อบริการ API ได้',
-  skill: 'นักศึกษาสามารถเขียนโค้ดสคริปต์เชื่อมต่อกล่องข้อมูล และการทำ Data Binding ได้ถูกต้อง',
-  attitude: 'ผู้เรียนมีความรับผิดชอบต่องานกลุ่ม เข้าเรียนตรงเวลา',
-  apply: 'สามารถนำเทคนิคการทำแอปพลิเคชันนี้ไปต่อยอดทำระบบในรายวิชาโครงการได้',
-  problem: 'นักศึกษาบางคนยังสับสนเรื่องการสลับความสอดคล้อง Async/Await ในสคริปต์',
-  solution: 'เพิ่มการอธิบายจำลองสถานการณ์ Timeline Flowchart และให้เพื่อนช่วยติวคู่ประกบ'
-});
+  knowledge: '', skill: '', attitude: '', apply: '', problem: '', solution: ''
+})
 
+// รูปภาพจาก API (GET /api/logs/:id/images)
 const appendixImages = ref({
-  section1: [{ desc: 'ภาพที่ 1: บรรยายการทำงานของระบบแอปพลิเคชัน' }, { desc: 'ภาพที่ 2: นิเทศการเรียนการสอนกลุ่ม' }],
-  section2: [{ desc: 'ภาพที่ 3: ครูผู้สอนสาธิตโค้ดโครงสร้างงาน' }, { desc: 'ภาพที่ 4: นักศึกษาลงมือปฏิบัติ' }],
-  section3: [{ desc: 'ภาพที่ 5: สื่อสไลด์ประกอบการสอนประจำหน่วย' }, { desc: 'ภาพที่ 6: คู่มือปฏิบัติการประมวลผล' }],
-  section4_5: [{ desc: 'ภาพที่ 7: มอบหมายงานผ่าน Google Classroom' }, { desc: 'ภาพที่ 8: บันทึกคะแนนประเมินผล' }]
-});
+  section1:  [],
+  section2:  [],
+  section3:  [],
+  section4_5: []
+})
 
-const saveData = () => { alert('💾 บันทึกข้อมูลสำเร็จ!'); };
-const exportPDF = () => { window.print(); };
+// ─── Auth helper ─────────────────────────────────────
+function authHeaders() {
+  const token = localStorage.getItem('token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+// ─── Toast helper ────────────────────────────────────
+function showToast(message, type = 'success') {
+  toast.value = { show: true, type, message }
+  setTimeout(() => { toast.value.show = false }, 4000)
+}
+
+// ─── Map API response → local refs ───────────────────
+// logController.getLogById ส่งคืน: { ...teaching_logs fields, users:{...}, images:[...] }
+function mapApiToRefs(data) {
+  // ── logData ──
+  const att = Array.isArray(data.attendance) ? data.attendance : []
+  // ทำให้มีครบ 6 แถวเสมอ
+  const rows = Array(6).fill(null).map((_, i) => att[i] || {
+    date: '', period: '', time_range: '', total: '', present: '', percentage: '', remark: ''
+  })
+
+  logData.value = {
+    semester:       data.semester       || '',
+    academic_year:  data.academic_year  || '',
+    teacher_name:   data.users?.full_name || '',
+    department:     data.users?.departments?.name || '',
+    week:           String(data.week    || ''),
+    start_date:     data.date_from      || '',
+    month:          data.month          || '',
+    year:           data.year           || '',
+    subject_name:   data.subject_name   || '',
+    subject_code:   data.subject_code   || '',
+    topic:          data.topic          || '',
+    supervisor_name: data.supervisor_name || '',
+    attendance_rows: rows
+  }
+
+  // ── methodsData ──
+  const m  = data.methods          || {}
+  const cm = data.content_methods  || {}
+  const md = data.media            || {}
+  const ap = data.apps             || {}
+  const ev = data.evaluation       || {}
+
+  methodsData.value = {
+    format_onsite:   !!m.format_onsite,   format_onair:  !!m.format_onair,
+    format_online:   !!m.format_online,   format_ondemand: !!m.format_ondemand,
+    format_onhand:   !!m.format_onhand,   format_other:  !!m.format_other,
+    format_other_detail: m.format_other_detail || '',
+
+    method_lecture:    !!cm.lecture,    method_demo:       !!cm.demo,
+    method_experiment: !!cm.experiment, method_simulation: !!cm.simulation,
+    method_discussion: !!cm.discussion, method_case:       !!cm.case_study,
+    method_center:     !!cm.center,     method_game:       !!cm.game,
+    method_pjbl:       !!cm.pjbl,       method_stem:       !!cm.stem,
+    method_other:      !!cm.other,      method_other_detail: cm.other_detail || '',
+
+    media_ppt:       !!md.ppt,       media_doc:       !!md.doc,
+    media_book:      !!md.book,      media_real:      !!md.real,
+    media_ebook:     !!md.ebook,     media_worksheet: !!md.worksheet,
+    media_other:     !!md.other,     media_other_detail: md.other_detail || '',
+
+    app_classroom: !!ap.classroom, app_meet:    !!ap.meet,
+    app_zoom:      !!ap.zoom,      app_line:    !!ap.line,
+    app_facebook:  !!ap.facebook,  app_youtube: !!ap.youtube,
+    app_other:     !!ap.other,     app_other_detail: ap.other_detail || '',
+
+    eval_observe:  !!ev.observe,  eval_test:     !!ev.test,
+    eval_work:     !!ev.work,     eval_exercise: !!ev.exercise,
+    eval_other:    !!ev.other,    eval_other_detail: ev.other_detail || ''
+  }
+
+  // ── resultsData ──
+  resultsData.value = {
+    knowledge: data.outcome_cognitive    || '',
+    skill:     data.outcome_psychomotor  || '',
+    attitude:  data.outcome_affective    || '',
+    apply:     data.outcome_application  || '',
+    problem:   data.problem  || '',
+    solution:  data.solution || ''
+  }
+
+  // ── appendixImages — จัด section ตาม field section ที่ backend ส่งมา ──
+  const imgs = Array.isArray(data.images) ? data.images : []
+  const bySection = (key) => imgs
+    .filter(i => i.section === key)
+    .map(i => ({ id: i.id, desc: i.caption || '', url: i.signed_url || null }))
+
+  appendixImages.value = {
+    section1:   bySection('format'),
+    section2:   bySection('method'),
+    section3:   bySection('media'),
+    section4_5: bySection('app_eval')
+  }
+
+  // ถ้า section ไหนไม่มีรูป ให้มี placeholder 2 ช่อง
+  const placeholder = () => [{ id: null, desc: '', url: null }, { id: null, desc: '', url: null }]
+  if (!appendixImages.value.section1.length)   appendixImages.value.section1   = placeholder()
+  if (!appendixImages.value.section2.length)   appendixImages.value.section2   = placeholder()
+  if (!appendixImages.value.section3.length)   appendixImages.value.section3   = placeholder()
+  if (!appendixImages.value.section4_5.length) appendixImages.value.section4_5 = placeholder()
+}
+
+// ─── GET /api/logs/:id ────────────────────────────────
+async function fetchLog() {
+  loading.value    = true
+  fetchError.value = null
+  try {
+    const res = await fetch(`${API}/logs/${route.params.id}`, {
+      headers: authHeaders()
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'โหลดข้อมูลไม่สำเร็จ')
+    }
+    const data = await res.json()
+    mapApiToRefs(data)
+  } catch (err) {
+    fetchError.value = err.message
+  } finally {
+    loading.value = false
+  }
+}
+
+// ─── Toggle edit / save ──────────────────────────────
+const toggleEditMode = async () => {
+  if (isEditing.value) {
+    await saveData()
+  }
+  isEditing.value = !isEditing.value
+}
+
+// ─── PUT /api/logs/:id ───────────────────────────────
+async function saveData() {
+  saving.value = true
+  try {
+    const payload = {
+      week:        Number(logData.value.week) || 1,
+      date_from:   logData.value.start_date,
+      subject_name: logData.value.subject_name,
+      subject_code: logData.value.subject_code,
+      topic:        logData.value.topic,
+      attendance:   logData.value.attendance_rows,
+      methods: {
+        format_onsite:       methodsData.value.format_onsite,
+        format_onair:        methodsData.value.format_onair,
+        format_online:       methodsData.value.format_online,
+        format_ondemand:     methodsData.value.format_ondemand,
+        format_onhand:       methodsData.value.format_onhand,
+        format_other:        methodsData.value.format_other,
+        format_other_detail: methodsData.value.format_other_detail
+      },
+      content_methods: {
+        lecture: methodsData.value.method_lecture, demo: methodsData.value.method_demo,
+        experiment: methodsData.value.method_experiment, simulation: methodsData.value.method_simulation,
+        discussion: methodsData.value.method_discussion, case_study: methodsData.value.method_case,
+        center: methodsData.value.method_center, game: methodsData.value.method_game,
+        pjbl: methodsData.value.method_pjbl, stem: methodsData.value.method_stem,
+        other: methodsData.value.method_other, other_detail: methodsData.value.method_other_detail
+      },
+      media: {
+        ppt: methodsData.value.media_ppt, doc: methodsData.value.media_doc,
+        book: methodsData.value.media_book, real: methodsData.value.media_real,
+        ebook: methodsData.value.media_ebook, worksheet: methodsData.value.media_worksheet,
+        other: methodsData.value.media_other, other_detail: methodsData.value.media_other_detail
+      },
+      apps: {
+        classroom: methodsData.value.app_classroom, meet: methodsData.value.app_meet,
+        zoom: methodsData.value.app_zoom, line: methodsData.value.app_line,
+        facebook: methodsData.value.app_facebook, youtube: methodsData.value.app_youtube,
+        other: methodsData.value.app_other, other_detail: methodsData.value.app_other_detail
+      },
+      evaluation: {
+        observe: methodsData.value.eval_observe, test: methodsData.value.eval_test,
+        work: methodsData.value.eval_work, exercise: methodsData.value.eval_exercise,
+        other: methodsData.value.eval_other, other_detail: methodsData.value.eval_other_detail
+      },
+      outcome_cognitive:   resultsData.value.knowledge,
+      outcome_psychomotor: resultsData.value.skill,
+      outcome_affective:   resultsData.value.attitude,
+      outcome_application: resultsData.value.apply,
+      problem:  resultsData.value.problem,
+      solution: resultsData.value.solution
+    }
+
+    const res = await fetch(`${API}/logs/${route.params.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(payload)
+    })
+
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'บันทึกข้อมูลไม่สำเร็จ')
+    }
+
+    showToast('บันทึกข้อมูลสำเร็จแล้วครับ ✓')
+  } catch (err) {
+    showToast(err.message, 'error')
+    isEditing.value = true // คงอยู่ในโหมดแก้ไขถ้า save ไม่ผ่าน
+  } finally {
+    saving.value = false
+  }
+}
+
+// ─── POST /api/logs/:id/images ───────────────────────
+async function handleImageUpload(event, sectionKey) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('section', sectionKey)
+  formData.append('caption', '')
+
+  try {
+    const res = await fetch(`${API}/logs/${route.params.id}/images`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: formData
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'อัปโหลดรูปไม่สำเร็จ')
+    }
+    // โหลดข้อมูลใหม่เพื่อดึง signed URL ล่าสุด
+    await fetchLog()
+    showToast('อัปโหลดรูปภาพสำเร็จ ✓')
+  } catch (err) {
+    showToast(err.message, 'error')
+  }
+}
+
+// ─── DELETE /api/logs/:id/images/:imgId ──────────────
+async function deleteImage(imgId) {
+  if (!imgId || !confirm('ต้องการลบรูปภาพนี้ใช่ไหม?')) return
+  try {
+    const res = await fetch(`${API}/logs/${route.params.id}/images/${imgId}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'ลบรูปไม่สำเร็จ')
+    }
+    await fetchLog()
+    showToast('ลบรูปภาพสำเร็จ ✓')
+  } catch (err) {
+    showToast(err.message, 'error')
+  }
+}
+
+// ─── Export PDF ──────────────────────────────────────
+const exportPDF = async () => {
+  const { default: jsPDF }      = await import('jspdf')
+  const { default: html2canvas } = await import('html2canvas')
+
+  const pages = document.querySelectorAll('.pdf-page-sheet')
+  const pdf   = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+
+  for (let i = 0; i < pages.length; i++) {
+    const canvas = await html2canvas(pages[i], {
+      scale: 2, useCORS: true, backgroundColor: '#ffffff',
+      width: pages[i].offsetWidth, height: pages[i].offsetHeight
+    })
+    const imgData = canvas.toDataURL('image/jpeg', 0.98)
+    if (i > 0) pdf.addPage()
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297)
+  }
+
+  const blob = pdf.output('blob')
+  window.open(URL.createObjectURL(blob), '_blank')
+}
+
+// ─── Lifecycle ───────────────────────────────────────
+onMounted(fetchLog)
 </script>
 
 <style scoped>
@@ -589,6 +927,13 @@ input:disabled, textarea:disabled, select:disabled {
 .mock-image-view { width: 100%; height: 135px; background: #f3f4f6; border: 1px dashed #9ca3af; display: flex; align-items: center; justify-content: center; }
 .mock-photo-icon { font-size: 11px; color: #6b7280; font-style: italic; text-align: center; }
 .photo-desc-input { width: 100%; border: none; border-bottom: 1px solid #777; margin-top: 4px; font-size: 13px; text-align: center; }
+.upload-label { display:flex;align-items:center;justify-content:center;width:100%;height:100%;cursor:pointer; }
+.del-img-btn { flex-shrink:0;background:#ef4444;color:#fff;border:none;border-radius:4px;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:1; }
+.toast-box { position:fixed;bottom:24px;right:24px;z-index:999;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+.toast-success { background:#dcfce7;color:#166534;border:1px solid #86efac; }
+.toast-error   { background:#fee2e2;color:#dc2626;border:1px solid #fca5a5; }
+.fade-enter-active,.fade-leave-active{transition:opacity .3s}
+.fade-enter-from,.fade-leave-to{opacity:0}
 
 .mt-6 { margin-top: 5px; }
 .mt-12 { margin-top: 8px; }
