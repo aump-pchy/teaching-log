@@ -38,24 +38,25 @@ const router = createRouter({
 })
 
 // 🟢 ปรับปรุงการตรวจสอบสิทธิ์ให้ปลอดภัยและแม่นยำขึ้น
-router.beforeEach((to, from, next) => {
-  const auth = useAuthStore()
+router.beforeEach((to, from) => {
+  const token = localStorage.getItem('token')
+  const userRole = localStorage.getItem('role')
   
   // เช็กว่าหน้าที่จะไปต้องการ Token ไหม แต่ผู้ใช้ไม่มี Token
-  if (to.meta.requiresAuth && !auth.token) {
-    return next('/login')
+  if (to.meta.requiresAuth && !token) {
+    return '/login'
   }
   
   // เช็กสิทธิ์แอดมิน (ป้องกันตัวพิมพ์เล็กพิมพ์ใหญ่ และเช็กสิทธิ์ซ้ำซ้อน)
   if (to.meta.adminOnly) {
-    const userRole = auth.user?.role ? auth.user.role.toLowerCase() : ''
+    const userRole = localStorage.getItem('role')
     if (userRole !== 'admin') {
-      return next('/logs') // ถ้าไม่ใช่แอดมินให้ดีดไปหน้าดูรายการสอนปกติ
+      return '/logs' // ถ้าไม่ใช่แอดมินให้ดีดไปหน้าดูรายการสอนปกติ
     }
   }
   
   // ถ้าผ่านเงื่อนไขทั้งหมด ให้ปล่อยผ่านไปหน้าเป้าหมายได้เลย
-  next()
+  return true
 })
 
 export default router
