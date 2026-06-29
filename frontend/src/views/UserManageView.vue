@@ -337,7 +337,7 @@ const handleResetPassword = async (user) => {
 
 const saveUser = async () => {
   if (form.password && form.password.trim().length < 6 && (modal.isResetPassword || !modal.isEdit)) {
-    return alert('รหัสผ่านความปลอดภัยต้องมีความยาว 6 ตัวอักษรขึ้นไปนะอ้าย!')
+    return alert('รหัสผ่านความปลอดภัยต้องมีความยาว 6 ตัวอักษรขึ้นไปนะ !')
   }
 
   modal.saving = true
@@ -386,7 +386,7 @@ const handleApprove = async (user) => {
       role: user.role,
       is_approved: true
     })
-    alert(`อนุมัติสิทธิ์การใช้งานให้คุณ ${user.full_name} สำเร็จแล้วอ้าย!`)
+    alert(`อนุมัติสิทธิ์การใช้งานให้คุณ ${user.full_name} สำเร็จแล้ว!`)
     await fetchUsers()
   } catch (err) {
     console.error(err)
@@ -397,10 +397,10 @@ const handleApprove = async (user) => {
 const deleteUser = async (id) => {
   const currentUser = authStore.user?.value || authStore.user
   if (currentUser && currentUser.id === id) {
-    return alert('อ้ายจะลบบัญชี Admin ที่กำลังใช้งานอยู่ตอนนี้ไม่ได้นะอ้าย! 😂')
+    return alert('จะลบบัญชี Admin ที่กำลังใช้งานอยู่ตอนนี้ไม่ได้นะ! 😂')
   }
 
-  if (!confirm('อ้ายแน่ใจนะว่าต้องการจะลบผู้ใช้งานรายนี้ออกจากระบบบันทึกการสอน?')) return
+  if (!confirm('แน่ใจนะว่าต้องการจะลบผู้ใช้งานรายนี้ออกจากระบบบันทึกการสอน?')) return
   try {
     await axios.delete(`${API_URL}/users/${id}`)
     alert('ลบข้อมูลผู้ใช้งานเรียบร้อยแล้ว!')
