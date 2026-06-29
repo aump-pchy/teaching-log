@@ -186,7 +186,7 @@ const editModal = ref({
   data: { id: null, code: '', name: '', headerName: '' }
 });
 
-// ── Computed ───────────────────────────────────────────────
+// ── Computed ──────────────────────────────────────────
 const filteredDepartments = computed(() => {
   if (!searchQuery.value) return departmentsList.value;
   const q = searchQuery.value.toLowerCase();
@@ -198,7 +198,7 @@ const filteredDepartments = computed(() => {
   );
 });
 
-// ── Helpers ────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────
 function showToast(message, type = 'success') {
   toast.value = { show: true, message, type };
   setTimeout(() => (toast.value.show = false), 3000);
