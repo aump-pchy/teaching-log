@@ -532,9 +532,10 @@ async function fetchLog() {
   loading.value    = true
   fetchError.value = null
   try {
-    const res = await fetch(`${API}/logs/${route.params.id}`, {
-      headers: authHeaders()
-    })
+  const res = await fetch(`${API}/logs/${route.params.id}`, {
+  headers: authHeaders()
+  })
+
     if (!res.ok) {
       const err = await res.json()
       throw new Error(err.error || 'โหลดข้อมูลไม่สำเร็จ')

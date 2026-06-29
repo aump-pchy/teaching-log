@@ -1,38 +1,42 @@
 <template>
-  <nav class="nav-buttons">
-    <router-link to="/" class="btn">หลัก</router-link>
-    <router-link to="/forgot-password" class="btn">Forgot Password</router-link>
-    <router-link to="/admin/users" class="btn">Admin Users</router-link>
-    <router-link to="/logs/new" class="btn">New Log</router-link>
-    <router-link to="/logs/:id/edit" class="btn">Edit Log</router-link>
-    <router-link to="/logs" class="btn">Logs</router-link>
-    <router-link to="/logs/:id" class="btn">Log Detail</router-link>
-  </nav>
+  <div class="app-layout">
 
-  <router-view v-slot="{ Component, route }">
-    <component :is="Component" :key="route.fullPath" />
-  </router-view>
+    <!-- Sidebar — แสดงเฉพาะหน้าที่ต้อง login -->
+    <AppSidebar v-if="showSidebar" />
+
+    <!-- Main content -->
+    <main :class="['main-content', { 'with-sidebar': showSidebar }]">
+      <router-view />
+    </main>
+
+  </div>
 </template>
 
-<style scoped>
-.nav-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
+<script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import AppSidebar from './components/AppSidebar.vue'
 
-.btn {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  background-color: #3b82f6;
-  color: #fff;
-  text-decoration: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  transition: background-color 0.2s;
-}
+const route = useRoute()
 
-.btn:hover {
-  background-color: #2563eb;
+// แสดง sidebar เฉพาะหน้าที่ meta.requiresAuth = true
+const showSidebar = computed(() => !!route.meta.requiresAuth)
+</script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Sarabun', sans-serif; background: #f7f9f7; }
+
+.app-layout { display: flex; min-height: 100vh; }
+
+.main-content { flex: 1; min-width: 0; }
+
+/* เลื่อน content ให้พ้น sidebar */
+.main-content.with-sidebar { margin-left: 240px; transition: margin-left .2s ease; }
+
+@media (max-width: 768px) {
+  .main-content.with-sidebar { margin-left: 0; padding-top: 60px; }
 }
 </style>

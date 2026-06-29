@@ -203,6 +203,6 @@ const filteredLogs = computed(() => {
 // 🟢 เพิ่มฟังก์ชันนี้เข้าไป เพื่อให้มันเอา id จริงส่งไปเปลี่ยนพาร์ท URL บนเบราว์เซอร์
 const viewDetail = (id) => {
   if (!id) return
-  router.push(`/logs/${id}`) // ใช้เครื่องหมาย Backtick (`` ` ``) เพื่อดึงเลข ID จริงไปใส่ในพาร์ทจ้า
+  router.push(`/logs/${id}`)
 }
 </script>
