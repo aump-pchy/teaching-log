@@ -121,6 +121,30 @@ const rawLogs = ref([])
 const departments = ["IT", "AI", "EE", "ME"]
 const selectedDept = ref("")
 
+// ตัวแปรเก็บข้อมูลครูที่ได้จากการแกะ Token ฝั่งหน้าบ้าน
+const currentUserId = ref(null)
+
+// ฟังก์ชันแกะข้อมูลจาก JWT Token ที่เก็บในเครื่อง เพื่อหา ID ของครูที่กำลังล็อกอิน
+const getUserIdFromToken = () => {
+  const token = localStorage.getItem('token')
+  if (!token) return null
+  try {
+    // แยกส่วนประกอบของ JWT (Header.Payload.Signature) เอาส่วน Payload มาถอดรหัส
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    }).join(''))
+    
+    const decoded = JSON.parse(jsonPayload)
+    // เช็กชื่อฟิลด์ ID ของกลุ่มใน Token นะคะ (ส่วนใหญ่คือ decoded.id หรือ decoded.userId)
+    return decoded.id 
+  } catch (error) {
+    console.error('แกะ Token ไม่สำเร็จ:', error)
+    return null
+  }
+}
+
 const fetchLogs = async () => {
   try {
     const url = selectedDept.value 
@@ -140,6 +164,9 @@ const fetchLogs = async () => {
 }
 
 onMounted(() => {
+  // 1. เก็บ ID คนล็อกอินปัจจุบันไว้เปรียบเทียบ
+  currentUserId.value = getUserIdFromToken()
+  // 2. เรียกดึงข้อมูลจากหลังบ้าน
   fetchLogs()
 })
 
@@ -147,19 +174,29 @@ watch(selectedDept, () => {
   fetchLogs()
 })
 
+// 3. ปรับปรุงการกรองตรงนี้: ให้แสดงเฉพาะข้อมูลที่ teacher_id ตรงกับคนที่ล็อกอินอยู่เท่านั้น!
 const filteredLogs = computed(() => {
+  console.log("👉 ID ของครูที่ล็อกอินอยู่ปัจจุบันคือ:", currentUserId.value)
+  console.log("📦 ก้อนข้อมูลที่ได้มาจากหลังบ้านแถวแรกคือ:", rawLogs.value[0])
+  
+  // 1. ดึงบทบาทสิทธิ์ (role) มาจากเครื่อง
+  const userRole = localStorage.getItem('role')
+  
+  // 2. ถ้าเป็นแอดมิน (admin) ให้ข้ามระบบกรอง เปิดให้เห็นข้อมูลทุกแผนก ทุกวิชา ทั้งวิทยาลัยทันที!
+  if (userRole === 'admin') {
+    return rawLogs.value
+  }
+  
+  // 3. ถ้าเป็นครูทั่วไป (teacher) ให้กรองจาก "ชื่อจริง" ของครูที่ล็อกอินอยู่ ณ ตอนนั้น
+  // ดึงชื่อครูที่ระบบจำไว้ตอนล็อกอิน (เช่น 'นางสาวสมพร ใจดี' หรือ 'นายณัฐพงศ์ สมาร์ท')
+  const currentTeacherName = localStorage.getItem('full_name') 
+  
+  if (currentTeacherName) {
+    // นำชื่อครูที่ล็อกอินไปวิ่งหาในฟิลด์ log.teacher_name ที่ติดมาจากหลังบ้าน
+    return rawLogs.value.filter(log => log.teacher_name === currentTeacherName)
+  }
+  
+  // เผื่อกรณียังไม่มีชื่อในเครื่อง ให้ปล่อยข้อมูลออกไปก่อนตารางจะได้ไม่ว่างเปล่าจ้า
   return rawLogs.value
 })
-
-const viewDetail = (id) => {
-  router.push(`/logs/${id}`)
-}
 </script>
-
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap');
-
-.font-sans {
-  font-family: 'Anuphan', 'Noto Sans Thai', sans-serif !important;
-}
-</style>
