@@ -6,17 +6,15 @@ const supabase = require('../db/supabase')
  */
 async function getAllDepartments(req, res) {
   try {
-    // 1. query departments ทั้งหมดจาก supabase สั่งเรียงลำดับตาม id เพื่อความสวยงามใน dropdown
     const { data: departments, error } = await supabase
       .from('departments')
-      .select('id, code, name')
+      .select('id, code, name, headerName')
       .order('id', { ascending: true })
 
     if (error) {
       return res.status(400).json({ error: error.message })
     }
 
-    // 2. return array of { id, code, name }
     return res.status(200).json(departments)
   } catch (err) {
     console.error('GetAllDepartments Error:', err)
@@ -27,19 +25,17 @@ async function getAllDepartments(req, res) {
 /**
  * POST /api/departments
  * admin only
- * body: { code, name }
+ * body: { code, name, headerName }
  */
 async function createDepartment(req, res) {
   try {
-    // 1. รับ code, name จาก req.body
-    const { code, name } = req.body
+    const { code, name, headerName } = req.body
 
-    if (!code || !name) {
+    if (!code || !name || !headerName) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
     }
 
-    // 2. validate ว่าไม่ซ้ำกับที่มีอยู่ (เช็กทั้งโค้ดแผนก และชื่อแผนก)
-    // 🟢 แก้ไข: ลบ .substring() ที่ไม่มีอยู่จริงออก เพื่อไม่ให้ระบบพังครืน
+    // validate ว่าไม่ซ้ำ (code หรือ name)
     const { data: existingDept, error: checkError } = await supabase
       .from('departments')
       .select('id')
@@ -53,10 +49,9 @@ async function createDepartment(req, res) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' }) // (แผนกวิชาหรือโค้ดนี้มีอยู่ในระบบแล้ว)
     }
 
-    // 3. insert ลง supabase
     const { data: newDept, error } = await supabase
       .from('departments')
-      .insert([{ code, name }])
+      .insert([{ code, name, headerName }])
       .select()
       .single()
 
@@ -64,7 +59,6 @@ async function createDepartment(req, res) {
       return res.status(400).json({ error: error.message })
     }
 
-    // 4. return department ที่สร้างใหม่
     return res.status(201).json(newDept)
   } catch (err) {
     console.error('CreateDepartment Error:', err)
@@ -75,23 +69,20 @@ async function createDepartment(req, res) {
 /**
  * PUT /api/departments/:id
  * admin only
+ * body: { code, name, headerName }
  */
 async function updateDepartment(req, res) {
   try {
-    // 1. รับ id จาก req.params.id
     const { id } = req.params
-    
-    // 2. รับ code, name จาก req.body
-    const { code, name } = req.body
+    const { code, name, headerName } = req.body
 
-    if (!code || !name) {
+    if (!code || !name || !headerName) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
     }
 
-    // 3. update ใน supabase
     const { data: updatedDept, error } = await supabase
       .from('departments')
-      .update({ code, name })
+      .update({ code, name, headerName })
       .eq('id', id)
       .select()
       .single()
@@ -103,7 +94,6 @@ async function updateDepartment(req, res) {
       return res.status(404).json({ error: 'ไม่พบข้อมูล' })
     }
 
-    // 4. return department ที่อัปเดตแล้ว
     return res.status(200).json(updatedDept)
   } catch (err) {
     console.error('UpdateDepartment Error:', err)
@@ -117,10 +107,8 @@ async function updateDepartment(req, res) {
  */
 async function deleteDepartment(req, res) {
   try {
-    // 1. รับ id จาก req.params.id
     const { id } = req.params
 
-    // 2. เช็คว่ายังมี user อยู่ใน department นี้ไหม → ถ้ามี return 400 ข้อมูลไม่ถูกต้อง
     const { count, error: countError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
@@ -133,7 +121,6 @@ async function deleteDepartment(req, res) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' }) // (ห้ามลบเนื่องจากยังมีบุคลากรสังกัดแผนกนี้อยู่)
     }
 
-    // 3. delete จาก supabase
     const { data, error } = await supabase
       .from('departments')
       .delete()
@@ -148,7 +135,6 @@ async function deleteDepartment(req, res) {
       return res.status(404).json({ error: 'ไม่พบข้อมูล' })
     }
 
-    // 4. return ข้อความภาษาไทยสวยงาม
     return res.status(200).json({ message: 'ลบแผนกสำเร็จ' })
   } catch (err) {
     console.error('DeleteDepartment Error:', err)
