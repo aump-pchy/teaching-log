@@ -263,20 +263,27 @@ const fetchDepartments = async () => {
 const fetchUsers = async () => {
   loading.value = true
   try {
-    const res = await axios.get(`${API_URL}/users`)
+    // 🎯 1. ไปดึง Token ล่าสุดจาก LocalStorage หรือ AuthStore มาเตรียมไว้
+    const token = localStorage.getItem('token')
+
+    // 🎯 2. ยิงหาหลังบ้านโดยแนบ Authorization Header ไปส่งบัตรผ่านประตูด้วย
+    const res = await axios.get(`${API_URL}/users`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    
+    // บันทึกข้อมูลจริงจาก Supabase (6 คน) ลงตัวแปร
     users.value = res.data
   } catch (err) {
-    console.error('ดึงข้อมูลผู้ใช้ล้มเหลว:', err)
-    // จำลองข้อมูลกรณีเชื่อมต่อ Database สำรอง
-    users.value = [
-      { id: 1, full_name: 'ผู้ดูแลระบบ', email: 'admin@loeitc.ac.th', department_id: 2, role: 'admin', is_approved: true, departments: { id: 2, name: 'เทคโนโลยีสารสนเทศ' } },
-      { id: 3, full_name: 'นางสาวสมพร ใจดี', email: 'somporn@loeitc.ac.th', department_id: 1, role: 'teacher', is_approved: false, departments: { id: 1, name: 'คหกรรมศาสตร์' } }
-    ]
+    console.error('ดึงข้อมูลผู้ใช้ล้มเหลวจริง ๆ:', err)
+    
+    // 🎯 3. สั่งเคลียร์ค่าว่างเมื่อระบบพัง เพื่อให้อ้ายรู้ตัวทันทีว่าหลังบ้านหรือระบบ Token กำลังมีปัญหา
+    users.value = [] 
   } finally {
     loading.value = false
   }
 }
-
 const getDepartmentName = (user) => {
   if (user.departments?.name) return user.departments.name
   if (user.department?.name) return user.department.name
