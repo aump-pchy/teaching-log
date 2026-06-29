@@ -47,7 +47,7 @@ const handleSubmit = async () => {
   loading.value = true
   try {
     await axios.post(`${API_URL}/auth/forgot-password`, { email: email.value })
-    alert('🚀 ส่งคำขอสำเร็จแล้วครับอ้าย! กรุณาติดต่อ Admin หรือหัวหน้าแผนกวิชาเพื่อขอรับรหัสผ่านใหม่ได้เลยครับ')
+    alert('🚀 ส่งคำขอสำเร็จแล้วค กรุณาติดต่อ Admin หรือหัวหน้าแผนกวิชาเพื่อขอรับรหัสผ่านใหม่ได้เลยครับ')
     email.value = ''
   } catch (err) {
     console.error(err)

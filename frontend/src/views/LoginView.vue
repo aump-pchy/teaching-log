@@ -149,11 +149,39 @@ function validate() {
 async function handleLogin() {
   if (!validate()) return
   loading.value = true
+  errors.global = '' // เคลียร์ข้อความ Error เก่าทิ้งก่อนล็อกอินใหม่
+  
   try {
+<<<<<<< HEAD
     //await authStore.login(form.email, form.password)
     router.push('/logs')
+=======
+    // 1. เรียกใช้ Store เพื่อยิงล็อกอิน (ถ้าใช้ Supabase ข้างใน Store ต้องเปลี่ยนเป็นคำสั่ง Supabase นะอ้าย)
+    await authStore.login(form.email, form.password)
+    
+    // 2. ดึงข้อมูลผู้ใช้ปัจจุบันออกมาตรวจสอบ (แก้เครื่องหมาย || ที่ตกไป)
+    const currentUser = authStore.user?.value || authStore.user
+    
+    if (currentUser) {
+      // 🎉 เติม 2 บรรทัดนี้ตามที่ต้องการเรียบร้อยครับ ซ่อมเครื่องหมาย || ให้แล้ว
+      localStorage.setItem('role', currentUser.role || '') 
+      localStorage.setItem('full_name', currentUser.full_name || currentUser.name || '')
+      
+      console.log('📌 บันทึกสิทธิ์และชื่อลงเครื่องสำเร็จ:', currentUser.role, currentUser.full_name)
+    }
+    
+    // 3. ระบบนำทางดักสิทธิ์ (Router)
+    if (currentUser && currentUser.role === 'admin') {
+      router.push('/admin/users') 
+    } else {
+      router.push('/logs')
+    }
+    
+>>>>>>> origin/feature/auth-users
   } catch (err) {
-    errors.global = err?.response?.data?.error || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
+    console.error('เกิดข้อผิดพลาดตอนล็อกอิน:', err)
+    // ดักจับ Error ทั้งจาก Node.js เดิม และจาก Supabase Auth
+    errors.global = err?.response?.data?.error || err?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
   } finally {
     loading.value = false
   }
