@@ -152,10 +152,6 @@ async function handleLogin() {
   errors.global = '' // เคลียร์ข้อความ Error เก่าทิ้งก่อนล็อกอินใหม่
   
   try {
-<<<<<<< HEAD
-    //await authStore.login(form.email, form.password)
-    router.push('/logs')
-=======
     // 1. เรียกใช้ Store เพื่อยิงล็อกอิน (ถ้าใช้ Supabase ข้างใน Store ต้องเปลี่ยนเป็นคำสั่ง Supabase นะอ้าย)
     await authStore.login(form.email, form.password)
     
@@ -177,7 +173,6 @@ async function handleLogin() {
       router.push('/logs')
     }
     
->>>>>>> origin/feature/auth-users
   } catch (err) {
     console.error('เกิดข้อผิดพลาดตอนล็อกอิน:', err)
     // ดักจับ Error ทั้งจาก Node.js เดิม และจาก Supabase Auth
