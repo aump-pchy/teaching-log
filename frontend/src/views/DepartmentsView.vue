@@ -216,7 +216,7 @@ function getAuthHeaders() {
 async function fetchDepartments() {
   listLoading.value = true;
   try {
-    const res = await fetch(`${BASE_URL}/api/departments`);
+    const res = await fetch(`${BASE_URL}/departments`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     departmentsList.value = await res.json();
   } catch (err) {
@@ -236,7 +236,7 @@ async function saveDepartment() {
 
   isLoading.value = true;
   try {
-    const res = await fetch(`${BASE_URL}/api/departments`, {
+    const res = await fetch(`${BASE_URL}/departments`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ code: code.trim(), name: name.trim(), headerName: headerName.trim() })
@@ -272,7 +272,7 @@ async function saveEdit() {
 
   editModal.value.loading = true;
   try {
-    const res = await fetch(`${BASE_URL}/api/departments/${id}`, {
+    const res = await fetch(`${BASE_URL}/departments/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({ code: code.trim(), name: name.trim(), headerName: headerName.trim() })
@@ -296,7 +296,7 @@ async function saveEdit() {
 async function deleteItem(item) {
   if (!confirm(`❌ คุณแน่ใจที่จะลบแผนกวิชา "${item.name}" หรือไม่?`)) return;
   try {
-    const res = await fetch(`${BASE_URL}/api/departments/${item.id}`, {
+    const res = await fetch(`${BASE_URL}  /departments/${item.id}`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     });
