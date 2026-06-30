@@ -78,7 +78,7 @@ async function getAllLogs(req, res) {
 }
 
 /**
- * GET /api/logs/:id
+ * GET /api/logs/:id (เวอร์ชันแก้ไขผสานร่างให้หน้าบ้านไม่ระเบิด)
  */
 async function getLogById(req, res) {
   try {
