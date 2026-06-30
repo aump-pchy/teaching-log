@@ -7,7 +7,7 @@
       </div>
       
       <h2>ลืมรหัสผ่านใช่ไหมอ้าย?</h2>
-      <p class="subtitle">กรอกอีเมลที่ใช้อยู่ในระบบ ระบบจะส่งคำขอไปยังผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่านให้ครับ</p>
+      <p class="subtitle">กรอกอีเมลที่ใช้อยู่ในระบบ ระบบจะรีเซ็ตรหัสผ่านให้เป็นรหัสตั้งต้นทันทีครับ</p>
 
       <form @submit.prevent="handleSubmit" class="forgot-form">
         <div class="form-group">
@@ -46,12 +46,14 @@ const loading = ref(false)
 const handleSubmit = async () => {
   loading.value = true
   try {
-    await axios.post(`${API_URL}/auth/forgot-password`, { email: email.value })
-    alert('🚀 ส่งคำขอสำเร็จแล้วค กรุณาติดต่อ Admin หรือหัวหน้าแผนกวิชาเพื่อขอรับรหัสผ่านใหม่ได้เลยครับ')
+    // 🎯 [แก้ไข] เอาข้อความจริงจาก backend มาโชว์ แทนการ hardcode ข้อความ static
+    // backend ตอนนี้รีเซ็ตรหัสผ่านเป็น "123456" ให้เสร็จในตัวเองแล้ว เลยต้องบอกผู้ใช้ตรงๆ
+    const res = await axios.post(`${API_URL}/auth/forgot-password`, { email: email.value })
+    alert(`🚀 ${res.data.message}`)
     email.value = ''
   } catch (err) {
     console.error(err)
-    const errorMsg = err.response?.data?.error || 'ไม่พบอีเมลนี้ในระบบคอมพิวเตอร์'
+    const errorMsg = err.response?.data?.error || 'ไม่พบอีเมลนี้ในระบบ หรือเกิดข้อผิดพลาดบางอย่าง'
     alert(`เกิดข้อผิดพลาด: ${errorMsg}`)
   } finally {
     loading.value = false
