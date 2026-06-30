@@ -32,16 +32,19 @@
             <label for="dept-filter" class="text-xs font-bold text-slate-500 whitespace-nowrap pl-2">
               🏢 แผนก:
             </label>
-            <select
-              id="dept-filter"
-              v-model="selectedDept"
-              class="bg-white border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-[#1e7e34] focus:border-[#1e7e34] block w-full md:w-48 p-2 font-semibold shadow-sm transition-all outline-none"
-            >
-              <option value="">ทั้งหมดทุกแผนกวิชา</option>
-              <option v-for="(dept, index) in departments" :key="index" :value="dept">
-                {{ dept }}
-              </option>
-            </select>
+            <div class="relative w-full md:w-44">
+              <select
+                id="dept-filter"
+                v-model="selectedDept"
+                class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl focus:ring-2 focus:ring-[#1e7e34]/20 focus:border-[#1e7e34] block w-full p-2.5 pr-8 font-semibold shadow-sm transition-all outline-none appearance-none cursor-pointer hover:border-slate-300"
+              >
+                <option value="">ทั้งหมดทุกแผนกวิชา</option>
+                <option v-for="(dept, index) in departments" :key="index" :value="dept">
+                  {{ dept }}
+                </option>
+              </select>
+              <span class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[10px] text-slate-400">▼</span>
+            </div>
           </div>
 
         </div>
@@ -49,19 +52,19 @@
     </div>
 
     <div class="max-w-7xl mx-auto mb-4 flex justify-start">
-      <div class="relative flex items-center bg-gradient-to-r from-[#0f543e] to-[#249143] text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-[0_2px_6px_rgba(15,84,62,0.15)] gap-1.5 hover:opacity-95 transition-opacity">
-        <span class="text-sm">📌</span>
+      <div class="relative flex items-center bg-gradient-to-r from-[#0f543e] to-[#249143] text-white text-xs font-semibold rounded-full custom-select-wrapper">
+        <span class="pl-4 text-sm pointer-events-none z-10">📌</span>
         
         <select 
           v-model="selectedSemester" 
-          class="bg-transparent text-white font-semibold cursor-pointer pr-5 focus:outline-none appearance-none font-sans"
+          class="bg-transparent text-white font-semibold cursor-pointer pl-2 pr-9 py-2 focus:outline-none appearance-none font-sans rounded-full z-10 w-full project-select-box"
         >
           <option value="1/2569" class="text-slate-700 bg-white font-semibold">ภาคเรียนที่ 1/2569</option>
           <option value="2/2569" class="text-slate-700 bg-white font-semibold">ภาคเรียนที่ 2/2569</option>
           <option value="summer" class="text-slate-700 bg-white font-semibold">ภาคเรียนฤดูร้อน (Summer)</option>
         </select>
 
-        <span class="absolute right-3 pointer-events-none text-[10px] opacity-80">▼</span>
+        <span class="absolute right-4 pointer-events-none text-[9px] opacity-80 z-10">▼</span>
       </div>
     </div>
 
@@ -144,6 +147,7 @@ const router = useRouter()
 const rawLogs = ref([])
 
 const selectedSemester = ref('1/2569')
+const isOpen = ref(false) // 🌟 เพิ่มตัวนี้เข้าไปเพื่อใช้เปิด-ปิดกล่องจำ
 const departments = ["IT", "AI", "EE", "ME"]
 const selectedDept = ref("")
 const searchQuery = ref('')
@@ -245,6 +249,14 @@ const viewDetail = (id) => {
   if (!id) return
   router.push(`/logs/${id}`)
 }
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('click', (e) => {
+    if (!e.target.closest('[v-data-dropdown]')) {
+      isOpen.value = false
+    }
+  })
+}
 </script>
 
 <style scoped>
@@ -261,8 +273,30 @@ select,
 button {
   font-family: 'Sarabun', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
+.custom-select-wrapper {
+  overflow: hidden;
+  box-shadow: -3px 5px 10px rgba(0, 0, 0, 0.16), -1px 3px 6px rgba(0, 0, 0, 0.1) !important;
+  transition: all 0.2s ease-in-out;
+}
+.custom-select-wrapper:hover {
+  box-shadow: -4px 7px 14px rgba(0, 0, 0, 0.2), -2px 4px 8px rgba(0, 0, 0, 0.12) !important;
+}
 
-/* รักษาความนิ่งของตาราง บังคับตัดคำยาวเกินไป ไม่ให้ไปเบียดความกว้างของคอลัมน์อื่น */
+/* 🌟 2. เวทมนตร์สั่งกล่องเด้ง (Option) ของเบราว์เซอร์ให้โค้งมน ไม่แข็งทื่อบังเงา! */
+.project-select-box option {
+  font-family: 'Sarabun', sans-serif !important;
+  background-color: #ffffff !important;
+  color: #334155 !important;
+  padding: 12px 16px !important;
+  /* คำสั่งลับบังคับขอบมนที่กล่องเด้งย่อย */
+  border-radius: 12px !important; 
+}
+
+/* ล้างขอบสีฟ้าน่าเกลียดออกให้หมดเวลาจิ้ม */
+select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
