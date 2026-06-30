@@ -206,7 +206,7 @@
         </div>
         <div class="sig-center-block">
           <p>ผู้รับรอง..........................................................</p>
-          <p>( <input type="text" v-model="logData.supervisor_name" :disabled="!isEditing" class="inline-clean-input text-center w-180" /> )</p>
+          <p>( {{ logData.supervisor_name || '...........................' }} )</p>
           <p>หัวหน้าแผนกวิชา{{ logData.department || '............' }}</p>
         </div>
       </div>
@@ -411,6 +411,7 @@ function mapApiToRefs(data) {
     academic_year:  data.academic_year  || '',
     teacher_name:   data.users?.full_name || '',
     department:     data.users?.departments?.name || '',
+    department_head: data.users?.departments?.headerName || '',
     week:           String(data.week    || ''),
     start_date:     data.date_from      || '',
     month:          data.month          || '',
@@ -418,7 +419,9 @@ function mapApiToRefs(data) {
     subject_name:   data.subject_name   || '',
     subject_code:   data.subject_code   || '',
     topic:          data.topic          || '',
-    supervisor_name: data.supervisor_name || '',
+    // supervisor_name = หัวหน้าแผนกวิชา ดึงจาก departments.headerName โดยตรง
+    // (ไม่ใช้ field พิมพ์มือจาก teaching_logs อีกต่อไป ให้ตรงกับฐานข้อมูลจริงเสมอ)
+    supervisor_name: data.users?.departments?.headerName || '',
     attendance_rows: rows
   }
 
