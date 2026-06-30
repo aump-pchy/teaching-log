@@ -372,7 +372,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // ─── Config ──────────────────────────────────────────
-const API = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api`
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}`
 
 const route  = useRoute()
 const router = useRouter()
@@ -532,9 +532,10 @@ async function fetchLog() {
   loading.value    = true
   fetchError.value = null
   try {
-    const res = await fetch(`${API}/logs/${route.params.id}`, {
-      headers: authHeaders()
-    })
+  const res = await fetch(`${API}/logs/${route.params.id}`, {
+  headers: authHeaders()
+  })
+
     if (!res.ok) {
       const err = await res.json()
       throw new Error(err.error || 'โหลดข้อมูลไม่สำเร็จ')
