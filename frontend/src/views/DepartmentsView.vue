@@ -296,7 +296,7 @@ async function saveEdit() {
 async function deleteItem(item) {
   if (!confirm(`❌ คุณแน่ใจที่จะลบแผนกวิชา "${item.name}" หรือไม่?`)) return;
   try {
-    const res = await fetch(`${BASE_URL}/departments/${item.id}`, {
+    const res = await fetch(`${BASE_URL}  /departments/${item.id}`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     });

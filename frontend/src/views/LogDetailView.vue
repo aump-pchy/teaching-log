@@ -19,17 +19,6 @@
     </div>
   </Transition>
 
-  <!-- NAVBAR -->
-  <header class="app-navbar print-hidden">
-    <div class="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center shrink-0">
-      <i class="fa-solid fa-book-open-reader text-lg text-white"></i>
-    </div>
-    <div>
-      <div class="navbar-title">บันทึกการจัดการเรียนรู้</div>
-      <div class="navbar-subtitle">สำหรับสถานประกอบการ ภาคเรียนที่ {{ logData.semester }}/{{ logData.academic_year }}</div>
-    </div>
-  </header>
-
   <!-- CONTROL PANEL -->
   <div class="control-panel print-hidden">
     <router-link to="/logs" class="back-btn-primary">
@@ -280,16 +269,9 @@
             <div class="photo-card-box" v-for="(img, i) in appendixImages.section1" :key="i">
               <div class="mock-image-view">
                 <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
-                <label v-else-if="isEditing" class="upload-label">
-                  <span class="mock-photo-icon">📤 คลิกเพื่ออัปโหลดรูป</span>
-                  <input type="file" accept="image/*" style="display:none" @change="e => handleImageUpload(e, 'format')" />
-                </label>
-                <span v-else class="mock-photo-icon">📸 รูปถ่ายกิจกรรม On-Site</span>
+                <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
               </div>
-              <div style="display:flex;align-items:center;gap:4px;">
-                <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
-                <button v-if="isEditing && img.id" @click="deleteImage(img.id)" class="del-img-btn">✕</button>
-              </div>
+              <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
             </div>
           </div>
         </div>
@@ -299,16 +281,9 @@
             <div class="photo-card-box" v-for="(img, i) in appendixImages.section2" :key="i">
               <div class="mock-image-view">
                 <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
-                <label v-else-if="isEditing" class="upload-label">
-                  <span class="mock-photo-icon">📤 คลิกเพื่ออัปโหลดรูป</span>
-                  <input type="file" accept="image/*" style="display:none" @change="e => handleImageUpload(e, 'method')" />
-                </label>
-                <span v-else class="mock-photo-icon">📸 รูปถ่ายสาธิตการเรียนการสอน</span>
+                <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
               </div>
-              <div style="display:flex;align-items:center;gap:4px;">
-                <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
-                <button v-if="isEditing && img.id" @click="deleteImage(img.id)" class="del-img-btn">✕</button>
-              </div>
+              <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
             </div>
           </div>
         </div>
@@ -326,16 +301,9 @@
             <div class="photo-card-box" v-for="(img, i) in appendixImages.section3" :key="i">
               <div class="mock-image-view">
                 <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
-                <label v-else-if="isEditing" class="upload-label">
-                  <span class="mock-photo-icon">📤 คลิกเพื่ออัปโหลดรูป</span>
-                  <input type="file" accept="image/*" style="display:none" @change="e => handleImageUpload(e, 'media')" />
-                </label>
-                <span v-else class="mock-photo-icon">📸 สื่อคอมพิวเตอร์ / สไลด์</span>
+                <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
               </div>
-              <div style="display:flex;align-items:center;gap:4px;">
-                <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
-                <button v-if="isEditing && img.id" @click="deleteImage(img.id)" class="del-img-btn">✕</button>
-              </div>
+              <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
             </div>
           </div>
         </div>
@@ -345,16 +313,9 @@
             <div class="photo-card-box" v-for="(img, i) in appendixImages.section4_5" :key="i">
               <div class="mock-image-view">
                 <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
-                <label v-else-if="isEditing" class="upload-label">
-                  <span class="mock-photo-icon">📤 คลิกเพื่ออัปโหลดรูป</span>
-                  <input type="file" accept="image/*" style="display:none" @change="e => handleImageUpload(e, 'app_eval')" />
-                </label>
-                <span v-else class="mock-photo-icon">📸 ระบบ Google Classroom / การให้คะแนน</span>
+                <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
               </div>
-              <div style="display:flex;align-items:center;gap:4px;">
-                <input type="text" v-model="img.desc" :disabled="!isEditing" class="photo-desc-input" />
-                <button v-if="isEditing && img.id" @click="deleteImage(img.id)" class="del-img-btn">✕</button>
-              </div>
+              <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
             </div>
           </div>
         </div>
@@ -372,7 +333,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // ─── Config ──────────────────────────────────────────
-const API = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api`
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}`
 
 const route  = useRoute()
 const router = useRouter()
@@ -532,9 +493,10 @@ async function fetchLog() {
   loading.value    = true
   fetchError.value = null
   try {
-    const res = await fetch(`${API}/logs/${route.params.id}`, {
-      headers: authHeaders()
-    })
+  const res = await fetch(`${API}/logs/${route.params.id}`, {
+  headers: authHeaders()
+  })
+
     if (!res.ok) {
       const err = await res.json()
       throw new Error(err.error || 'โหลดข้อมูลไม่สำเร็จ')
@@ -629,70 +591,20 @@ async function saveData() {
   }
 }
 
-// ─── POST /api/logs/:id/images ───────────────────────
-async function handleImageUpload(event, sectionKey) {
-  const file = event.target.files[0]
-  if (!file) return
-
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('section', sectionKey)
-  formData.append('caption', '')
-
-  try {
-    const res = await fetch(`${API}/logs/${route.params.id}/images`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: formData
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.error || 'อัปโหลดรูปไม่สำเร็จ')
-    }
-    // โหลดข้อมูลใหม่เพื่อดึง signed URL ล่าสุด
-    await fetchLog()
-    showToast('อัปโหลดรูปภาพสำเร็จ ✓')
-  } catch (err) {
-    showToast(err.message, 'error')
-  }
-}
-
-// ─── DELETE /api/logs/:id/images/:imgId ──────────────
-async function deleteImage(imgId) {
-  if (!imgId || !confirm('ต้องการลบรูปภาพนี้ใช่ไหม?')) return
-  try {
-    const res = await fetch(`${API}/logs/${route.params.id}/images/${imgId}`, {
-      method: 'DELETE',
-      headers: authHeaders()
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.error || 'ลบรูปไม่สำเร็จ')
-    }
-    await fetchLog()
-    showToast('ลบรูปภาพสำเร็จ ✓')
-  } catch (err) {
-    showToast(err.message, 'error')
-  }
-}
+// ─── รูปภาพเป็น read-only — ดึงมาแสดงจาก GET /api/logs/:id เท่านั้น ───
+// (ไม่มีฟังก์ชันอัปโหลด/ลบรูปในหน้านี้ตามที่ต้องการ)
 
 // ─── Export PDF ──────────────────────────────────────
+// ─── Export PDF (jsPDF วาด text จริง — ดูรายละเอียดใน pdfBuilder.js) ───
 const exportPDF = async () => {
-  const { default: jsPDF }      = await import('jspdf')
-  const { default: html2canvas } = await import('html2canvas')
+  const { buildLogPDF } = await import('./pdfBuilder.js')
 
-  const pages = document.querySelectorAll('.pdf-page-sheet')
-  const pdf   = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
-
-  for (let i = 0; i < pages.length; i++) {
-    const canvas = await html2canvas(pages[i], {
-      scale: 2, useCORS: true, backgroundColor: '#ffffff',
-      width: pages[i].offsetWidth, height: pages[i].offsetHeight
-    })
-    const imgData = canvas.toDataURL('image/jpeg', 0.98)
-    if (i > 0) pdf.addPage()
-    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297)
-  }
+  const pdf = await buildLogPDF({
+    logData: logData.value,
+    methodsData: methodsData.value,
+    resultsData: resultsData.value,
+    appendixImages: appendixImages.value
+  })
 
   const blob = pdf.output('blob')
   window.open(URL.createObjectURL(blob), '_blank')
@@ -813,7 +725,7 @@ body, input, textarea, select, button, span, p, div, h1, h2, h3, h4, th, td {
 .pdf-page-sheet {
   background: #ffffff;
   width: 210mm;
-  height: 297mm;
+  min-height: 297mm;
   box-sizing: border-box;
   padding: 8mm 15mm 12mm 15mm;
   color: #000000;
@@ -843,12 +755,16 @@ input:disabled, textarea:disabled, select:disabled {
 
 .dotted-input {
   border: none;
-  border-bottom: 1px dotted #000000;
-  background: transparent;
-  padding: 0 4px;
+  background-image: linear-gradient(to right, #000000 2px, transparent 2px);
+  background-repeat: repeat-x;
+  background-size: 7px 1px;
+  background-position: left bottom;
+  border-radius: 0;
+  padding: 0 4px 2px 4px;
   font-size: 14.5px;
 }
-.dotted-input:focus { outline: none; border-bottom-style: solid; }
+.dotted-input:focus { outline: none; background-image: linear-gradient(to right, #000000 100%, transparent 0%); background-size: 100% 1px; }
+.dotted-input:disabled { background-image: linear-gradient(to right, #000000 2px, transparent 2px); background-size: 7px 1px; }
 .flex-grow { flex-grow: 1; }
 .w-60 { width: 60px; } .w-80 { width: 80px; } .w-150 { width: 150px; } 
 .w-180 { width: 180px; } .w-200 { width: 200px; } .w-220 { width: 220px; } .w-250 { width: 250px; }
@@ -927,8 +843,6 @@ input:disabled, textarea:disabled, select:disabled {
 .mock-image-view { width: 100%; height: 135px; background: #f3f4f6; border: 1px dashed #9ca3af; display: flex; align-items: center; justify-content: center; }
 .mock-photo-icon { font-size: 11px; color: #6b7280; font-style: italic; text-align: center; }
 .photo-desc-input { width: 100%; border: none; border-bottom: 1px solid #777; margin-top: 4px; font-size: 13px; text-align: center; }
-.upload-label { display:flex;align-items:center;justify-content:center;width:100%;height:100%;cursor:pointer; }
-.del-img-btn { flex-shrink:0;background:#ef4444;color:#fff;border:none;border-radius:4px;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:1; }
 .toast-box { position:fixed;bottom:24px;right:24px;z-index:999;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.15); }
 .toast-success { background:#dcfce7;color:#166534;border:1px solid #86efac; }
 .toast-error   { background:#fee2e2;color:#dc2626;border:1px solid #fca5a5; }
