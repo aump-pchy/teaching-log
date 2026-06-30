@@ -31,6 +31,8 @@ async function register(req, res) {
     const hashedPassword = await bcrypt.hash(password, saltRounds)
 
     // สเต็ปที่ 2: บันทึกลงตาราง users
+    // 🎯 [แก้ไข] เพิ่ม auth_id: authData.user.id เพื่อผูกบัญชี Supabase Auth กับตาราง users
+    // จุดนี้สำคัญมาก ถ้าไม่บันทึกไว้ ฟีเจอร์รีเซ็ตรหัสผ่าน/เปลี่ยนรหัสผ่านฝั่ง Supabase Auth จะใช้งานไม่ได้
     const { error: dbError } = await supabase
       .from('users')
       .insert([
@@ -40,7 +42,8 @@ async function register(req, res) {
           full_name: full_name.trim(),
           department_id: Number(department_id),
           role: 'teacher',
-          is_approved: false
+          is_approved: false,
+          auth_id: authData.user.id
         }
       ])
 
