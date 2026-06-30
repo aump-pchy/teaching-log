@@ -233,7 +233,7 @@
             <textarea :disabled="!isEditing" class="dotted-textarea mt-4" rows="2"></textarea>
             <div class="text-center mt-6" style="font-size:12px;">
               <p>ลงชื่อ.......................................................... ผู้ตรวจสอบ</p>
-              <p>( ว่าที่ ร.ต. ชัชวาลย์ ป้อมสุวรรณ )</p>
+              <p>({{ logData?.head_curriculum ||systemSettings?.head_curriculum || 'ยังไม่ได้ระบุ' }})</p>
               <p>หัวหน้างานพัฒนาหลักสูตรและการจัดการเรียนรู้</p>
             </div>
           </div>
@@ -242,7 +242,7 @@
             <textarea :disabled="!isEditing" class="dotted-textarea mt-4" rows="2"></textarea>
             <div class="text-center mt-6" style="font-size:12px;">
               <p>ลงชื่อ.......................................................... ผู้รับรอง</p>
-              <p>( นายวิโรจน์ ยาบุษดี )</p>
+              <p>({{ logData?.deputy_academic || systemSettings?.deputy_academic || 'ยังไม่ได้ระบุ' }})</p>
               <p>รองผู้อำนวยการฝ่ายวิชาการ</p>
             </div>
           </div>
@@ -254,7 +254,8 @@
             <label class="custom-cb"><input type="checkbox" :disabled="!isEditing" /> อื่นๆ ................................................................</label>
           </div>
           <div class="text-center mt-6" style="font-size:12px;">
-            <p>ลงชื่อ................................................................................ ผู้อำนวยการ</p>
+            <p>ลงชื่อ........................................................... ผู้อำนวยการ</p>
+            <p>({{ logData?.director || systemSettings?.director || 'ยังไม่ได้ระบุ' }})</p>
             <p>ผู้อำนวยการวิทยาลัยเทคนิคเลย</p>
           </div>
         </div>
@@ -423,6 +424,29 @@ const appendixImages = ref({
   section4_5: []
 })
 
+//  1. สร้างตัวแปรเก็บค่าระบบกลาง
+const systemSettings = ref({
+  head_curriculum: '',
+  deputy_academic: '',
+  director: '',
+  term: '',
+  academic_year: ''
+})
+
+//  2. ฟังก์ชันวิ่งไปดึงข้อมูลจากหลังบ้าน
+async function fetchSystemSettings() {
+  try {
+    const res = await fetch(`${API}/system/settings`, { headers: authHeaders() })
+    if (res.ok) {
+      const data = await res.json()
+      systemSettings.value = data
+      console.log('👤 โหลดข้อมูลผู้บริหารสำเร็จ:', systemSettings.value)
+    }
+  } catch (error) {
+    console.error('โหลดข้อมูลระบบกลางไม่สำเร็จ:', error)
+  }
+}
+
 // ─── Auth helper ─────────────────────────────────────
 function authHeaders() {
   const token = localStorage.getItem('token')
@@ -458,6 +482,9 @@ function mapApiToRefs(data) {
     subject_code:   data.subject_code   || '',
     topic:          data.topic          || '',
     supervisor_name: data.supervisor_name || '',
+    head_curriculum: data.head_curriculum || '',
+    deputy_academic: data.deputy_academic || '',
+    director:        data.director        || '',
     attendance_rows: rows
   }
 
@@ -562,6 +589,13 @@ async function saveData() {
   saving.value = true
   try {
     const payload = {
+      semester:      logData.value.semester || systemSettings.value.term,          
+      academic_year: logData.value.academic_year || systemSettings.value.academic_year,
+
+      head_curriculum: logData.value.head_curriculum || systemSettings.value.head_curriculum,
+      deputy_academic: logData.value.deputy_academic || systemSettings.value.deputy_academic,
+      director:        logData.value.director        || systemSettings.value.director,
+
       week:        Number(logData.value.week) || 1,
       date_from:   logData.value.start_date,
       subject_name: logData.value.subject_name,
@@ -700,7 +734,10 @@ const exportPDF = async () => {
 }
 
 // ─── Lifecycle ───────────────────────────────────────
-onMounted(fetchLog)
+onMounted(async () => {
+  await fetchLog()
+  await fetchSystemSettings() // สั่งให้โหลดข้อมูลกลางมาสแตนด์บายไว้ตอนเปิดหน้าจอ
+})
 </script>
 
 <style scoped>
