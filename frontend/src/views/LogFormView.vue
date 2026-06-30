@@ -341,8 +341,17 @@ const SECTION_KEY_MAP = {
   'การประเมินผล': 'evaluation'
 }
 
-const toBooleanObject = (items) =>
-  items.reduce((acc, value) => ({ ...acc, [value]: true }), {})
+// แปลง array ของ key ที่ติ๊กเลือก → string ข้อความ label คั่นด้วย ", "
+// เช่น ['lecture', 'experiment'] → "สอนสด, ทดลอง"
+const toBooleanObject = (selectedKeys, optionsList) => {
+  return selectedKeys
+    .map(key => {
+      const found = optionsList.find(opt => opt.value === key)
+      return found ? found.label : key
+    })
+    .filter(label => label !== 'อื่นๆ ระบุ...')
+    .join(', ')
+}
 
 const normalizeSection = (categories) => {
   if (!categories?.length) return 'other'
@@ -611,7 +620,7 @@ const submit = async () => {
       semester: '1/2567', 
       week: 0,
       date_from: form.schedule[0]?.date || '',
-      date_to: form.schedule[form.schedule.length - 1]?.date || '',
+      date_to: form.schedule[form.schedule.length - 1]?.date_to || '',
       subject_name: form.subject,
       subject_code: '',
       topic: form.topic,
@@ -625,11 +634,11 @@ const submit = async () => {
         pct: row.total ? Math.round(((Number(row.present) || 0) / Number(row.total)) * 1000) / 10 : 0,
         issue: ''
       })),
-      methods: toBooleanObject(form.learningMethods),
-      content_methods: toBooleanObject(form.teachTechs),
-      media: toBooleanObject(form.media),
-      apps: toBooleanObject(form.programs),
-      evaluation: toBooleanObject(form.results),
+      methods: toBooleanObject(form.learningMethods, OPTIONS.methods),
+      content_methods: toBooleanObject(form.teachTechs, OPTIONS.teachTechs),
+      media: toBooleanObject(form.media, OPTIONS.mediaTypes),
+      apps: toBooleanObject(form.programs, OPTIONS.programs),
+      evaluation: toBooleanObject(form.results, OPTIONS.results),
       outcome_cognitive: '',
       outcome_psychomotor: '',
       outcome_affective: '',
