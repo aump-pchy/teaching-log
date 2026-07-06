@@ -146,8 +146,8 @@ import axios from 'axios'
 const router = useRouter()
 const rawLogs = ref([])
 
-const selectedSemester = ref('1/2569')
-const isOpen = ref(false) // 🌟 เพิ่มตัวนี้เข้าไปเพื่อใช้เปิด-ปิดกล่องจำ
+const selectedSemester = ref('') // 🌟 ตัวนี้จะเปลี่ยนค่าอัตโนมัติเมื่อดึงจากฐานข้อมูลสำเร็จ
+const isOpen = ref(false) 
 const departments = ["IT", "AI", "EE", "ME"]
 const selectedDept = ref("")
 const searchQuery = ref('')
@@ -174,6 +174,28 @@ const getUserIdFromToken = () => {
   }
 }
 
+//  1. ฟังก์ชันดึง "ภาคเรียน/ปีการศึกษาปัจจุบัน" จากหลังบ้าน (พอร์ต 3000 ตามใจหนู)
+const fetchSystemSettings = async () => {
+  try {
+    // ยิงไปดึงค่าคอนฟิกที่ตั้งจากหน้า Admin
+    const response = await axios.get('http://localhost:3000/api/system/settings')
+    if (response.data) {
+      const { term, academic_year } = response.data
+      
+      // แปลงค่าให้ตรงกับ Value ของ `<option>` ในหน้าต่าง UI
+      if (term.toLowerCase() === 'summer') {
+        selectedSemester.value = 'summer'
+      } else {
+        selectedSemester.value = `${term}/${academic_year}`
+      }
+      console.log(' ระบบโหลดภาคเรียนเริ่มต้นอัตโนมัติสำเร็จ:', selectedSemester.value)
+    }
+  } catch (error) {
+    console.error('โหลดค่าระบบกลางล้มเหลว พ่นค่า Default ป้องกันพัง:', error)
+    selectedSemester.value = '1/2569' // ค่าสำรองเผื่อหลังบ้านดับ
+  }
+}
+
 const fetchLogs = async () => {
   try {
     const url = selectedDept.value 
@@ -192,9 +214,13 @@ const fetchLogs = async () => {
   }
 }
 
-onMounted(() => {
+// 2. สั่งรันเรียงคิวอย่างเป็นระบบเมื่อเปิดหน้าเว็บ
+onMounted(async () => {
   currentUserId.value = getUserIdFromToken()
-  fetchLogs()
+  
+  // โหลดเทอมปัจจุบันมาก่อน เพื่อให้ปุ่มขยับตาม จากนั้นค่อยดึงตารางข้อมูล
+  await fetchSystemSettings()
+  await fetchLogs()
 })
 
 watch(selectedDept, () => {
@@ -207,8 +233,7 @@ watch(selectedSemester, () => {
 
 // ระบบกรองและพิมพ์ค้นหา
 const filteredLogs = computed(() => {
-  console.log("👉 ID ของครูที่ล็อกอินอยู่ปัจจุบันคือ:", currentUserId.value)
-  console.log("📦 ก้อนข้อมูลที่ได้มาจากหลังบ้านแถวแรกคือ:", rawLogs.value[0])
+  console.log("ID ของครูที่ล็อกอินอยู่ปัจจุบันคือ:", currentUserId.value)
   
   const userRole = localStorage.getItem('role')
   const currentTeacherName = localStorage.getItem('full_name') 
@@ -222,11 +247,11 @@ const filteredLogs = computed(() => {
     }
   }
   
-  // 2. ด่านกรองตามเทอม
+  // 2. ด่านกรองตามเทอม (ปรับตัวเปรียบเทียบให้ฉลาดและสมูทขึ้น ไม่หลุดคิว)
   if (selectedSemester.value) {
     result = result.filter(log => {
       const logTerm = log.semester || log.term || '1/2569'
-      return logTerm === selectedSemester.value
+      return logTerm.toLowerCase() === selectedSemester.value.toLowerCase()
     })
   }
   
