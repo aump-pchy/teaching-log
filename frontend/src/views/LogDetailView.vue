@@ -430,20 +430,39 @@ function mapApiToRefs(data) {
     date: '', period: '', time_range: '', total: '', present: '', percentage: '', remark: ''
   })
 
+  // semester ใน DB เก็บรวม "1/2569" → แยก semester / academic_year
+  const [semPart, yearPart] = (data.semester || '1/2569').split('/')
+
+  // date_from เป็น text ใน DB — ถ้าเป็น ISO (YYYY-MM-DD) แปลงเป็นวัน/เดือน/ปีไทย
+  let startDay = '', startMonth = '', startYear = ''
+  const rawDate = data.date_from || ''
+  if (rawDate && rawDate.includes('-')) {
+    const d = new Date(rawDate)
+    if (!isNaN(d.getTime())) {
+      const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                          'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
+      startDay   = String(d.getDate())
+      startMonth = thaiMonths[d.getMonth()]
+      startYear  = String(d.getFullYear() + 543)
+    }
+  } else {
+    startDay = rawDate
+  }
+
   logData.value = {
-    semester:       data.semester       || '',
-    academic_year:  data.academic_year  || '',
+    semester:       semPart  || '1',
+    academic_year:  yearPart || '2569',
     teacher_name:   data.users?.full_name || '',
     department:     data.users?.departments?.name || '',
-    department_head: data.users?.departments?.headerName || '',
-    week:           String(data.week    || ''),
-    start_date:     data.date_from      || '',
-    month:          data.month          || '',
-    year:           data.year           || '',
+    week:           String(data.week || ''),
+    start_date:     startDay,
+    month:          startMonth,
+    year:           startYear,
     subject_name:   data.subject_name   || '',
     subject_code:   data.subject_code   || '',
     topic:          data.topic          || '',
-    supervisor_name: data.supervisor_name || '',
+    // ดึงชื่อหัวหน้าแผนกจาก departments.headerName โดยตรง ไม่ใช้ field พิมพ์มือ
+    supervisor_name: data.users?.departments?.headerName || '',
     head_curriculum: data.head_curriculum || '',
     deputy_academic: data.deputy_academic || '',
     director:        data.director        || '',
@@ -551,12 +570,11 @@ async function saveData() {
   saving.value = true
   try {
     const payload = {
-      semester:      logData.value.semester || systemSettings.value.term,          
-      academic_year: logData.value.academic_year || systemSettings.value.academic_year,
-
-      head_curriculum: logData.value.head_curriculum || systemSettings.value.head_curriculum,
-      deputy_academic: logData.value.deputy_academic || systemSettings.value.deputy_academic,
-      director:        logData.value.director        || systemSettings.value.director,
+      // semester ใน DB เก็บรวมกันเป็น '1/2569'
+      semester: `${logData.value.semester || '1'}/${logData.value.academic_year || '2569'}`,
+      head_curriculum: logData.value.head_curriculum,
+      deputy_academic: logData.value.deputy_academic,
+      director:        logData.value.director,
 
       week:        Number(logData.value.week) || 1,
       date_from:   logData.value.start_date,
