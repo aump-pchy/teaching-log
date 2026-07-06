@@ -69,6 +69,9 @@
                 <FormField icon="fa-graduation-cap" label="วิชาสอน" required>
                   <input v-model="form.subject" class="form-input" placeholder="ระบุชื่อวิชา" />
                 </FormField>
+                <FormField icon="fa-hashtag" label="รหัสวิชา">
+                  <input v-model="form.subjectCode" class="form-input" placeholder="เช่น 30000-1234" />
+                </FormField>
                 <FormField icon="fa-layer-group" label="ระดับชั้น / กลุ่ม">
                   <input v-model="form.level" class="form-input" placeholder="เช่น ปวช.2/1" />
                 </FormField>
@@ -341,8 +344,44 @@ const SECTION_KEY_MAP = {
   'การประเมินผล': 'evaluation'
 }
 
-const toBooleanObject = (items) =>
-  items.reduce((acc, value) => ({ ...acc, [value]: true }), {})
+// แปลง key ของฟอร์ม (เช่น 'onsite','lecture','ppt'...) ให้ตรงกับ key ที่ LogDetailView.vue ต้องการ
+// เช่น methods: ['onsite','online'] → { format_onsite:true, format_onair:false, format_online:true, ... }
+const KEY_MAPS = {
+  methods: {
+    onsite: 'format_onsite', tv: 'format_onair', online: 'format_online',
+    app: 'format_ondemand', handout: 'format_onhand', other: 'format_other',
+  },
+  teachTechs: {
+    lecture: 'lecture', experiment: 'experiment', group: 'discussion',
+    center: 'center', pjbl: 'pjbl', moral: 'case_study', stem: 'stem', other: 'other',
+  },
+  mediaTypes: {
+    ppt: 'ppt', ebook: 'ebook', notebook: 'worksheet', doc: 'doc', other: 'other',
+  },
+  programs: {
+    teams: 'classroom', gclass: 'classroom', zoom: 'zoom',
+    facebook: 'facebook', line: 'line', other: 'other',
+  },
+  results: {
+    pretest: 'observe', posttest: 'test', observe: 'work', activity: 'observe', other: 'other',
+  },
+}
+
+// แปลง array ของ key ที่ติ๊กเลือก → object { key: true/false, other_detail: '...' } ตาม key ที่ LogDetailView.vue ต้องการ
+// เช่น ['lecture', 'experiment'] → { lecture: true, experiment: true, demo: false, other_detail: '' }
+const toBooleanObject = (selectedKeys, optionsList, mapKey, otherDetailText = '') => {
+  const keyMap = KEY_MAPS[mapKey] || {}
+  const result = {}
+  // ตั้งค่าเริ่มต้นทุก key ที่ map ไว้เป็น false ก่อน
+  Object.values(keyMap).forEach(k => { result[k] = false })
+  // ตั้งค่า true เฉพาะที่ติ๊กเลือก
+  selectedKeys.forEach(key => {
+    const mapped = keyMap[key]
+    if (mapped) result[mapped] = true
+  })
+  result.other_detail = otherDetailText || ''
+  return result
+}
 
 const normalizeSection = (categories) => {
   if (!categories?.length) return 'other'
@@ -479,7 +518,7 @@ const IMAGE_CATEGORIES = [
 ]
 
 const form = reactive({
-  teacherName: '', subject: '', company: '', level: '', topic: '', logDate: '',
+  teacherName: '', subject: '', subjectCode: '', company: '', level: '', topic: '', logDate: '',
   schedule: [
     { date: '', date_to: '', time: '08:00-10:00', total: '', present: '', absent: '', score: '' },
     { date: '', date_to: '', time: '08:00-10:00', total: '', present: '', absent: '', score: '' },
@@ -611,9 +650,9 @@ const submit = async () => {
       semester: '1/2567', 
       week: 0,
       date_from: form.schedule[0]?.date || '',
-      date_to: form.schedule[form.schedule.length - 1]?.date || '',
+      date_to: form.schedule[form.schedule.length - 1]?.date_to || '',
       subject_name: form.subject,
-      subject_code: '',
+      subject_code: form.subjectCode,
       topic: form.topic,
       attendance: form.schedule.map((row) => ({
         day: row.date || '',
@@ -625,11 +664,11 @@ const submit = async () => {
         pct: row.total ? Math.round(((Number(row.present) || 0) / Number(row.total)) * 1000) / 10 : 0,
         issue: ''
       })),
-      methods: toBooleanObject(form.learningMethods),
-      content_methods: toBooleanObject(form.teachTechs),
-      media: toBooleanObject(form.media),
-      apps: toBooleanObject(form.programs),
-      evaluation: toBooleanObject(form.results),
+      methods: toBooleanObject(form.learningMethods, OPTIONS.methods, 'methods', form.otherDetails.methods),
+      content_methods: toBooleanObject(form.teachTechs, OPTIONS.teachTechs, 'teachTechs', form.otherDetails.teachTechs),
+      media: toBooleanObject(form.media, OPTIONS.mediaTypes, 'mediaTypes', form.otherDetails.media),
+      apps: toBooleanObject(form.programs, OPTIONS.programs, 'programs', form.otherDetails.programs),
+      evaluation: toBooleanObject(form.results, OPTIONS.results, 'results', form.otherDetails.results),
       outcome_cognitive: '',
       outcome_psychomotor: '',
       outcome_affective: '',
