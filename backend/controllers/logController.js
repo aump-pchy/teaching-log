@@ -154,6 +154,7 @@ async function getLogById(req, res) {
 async function createLog(req, res) {
   try {
     const {
+      semester, 
       week,
       date_from,
       date_to,
@@ -180,6 +181,7 @@ async function createLog(req, res) {
 
     const payload = {
       user_id: req.user.id,
+      semester: semester || '1/2567',
       week: Number(week) || 1,
       date_from: date_from || '',
       date_to: date_to || '',
