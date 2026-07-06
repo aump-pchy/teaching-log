@@ -19,19 +19,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ⭐ ใช้ตัวนี้เช็กสิทธิ์หน้าบ้านได้เลย ยืดหยุ่นและปลอดภัยกว่า
   const isAdmin = computed(() => {
-    // ดักจับโครงสร้าง object ที่อาจซ้อนกันมาจากการส่งค่าของ Supabase/หลังบ้าน
     const u = user.value?.value || user.value
     return u?.role === 'admin'
   })
 
   async function login(email, password) {
-    // const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/auth/login`, { email, password })
-    // token.value = data.token
-    // user.value  = data.user
-    // localStorage.setItem('token', data.token)
-    // localStorage.setItem('user',  JSON.stringify(data.user))
-    // axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
-    // ตรวจสอบ VITE_API_URL เผื่อกรณีไม่มีค่าใน env
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
     const { data } = await axios.post(`${baseUrl}/auth/login`, { email, password })
     
@@ -41,14 +33,20 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('token', data.token)
     localStorage.setItem('user',  JSON.stringify(data.user))
     axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
+
+    // 🎯 [สำคัญ] คืนค่าข้อมูล user กลับไปให้ฟังก์ชัน handleLogin ใน LoginView.vue นำไปใช้งานต่อได้ทันที
+    return data.user
   }
 
+  // 🟢 เปิดใช้งานระบบ Logout ให้สามารถล้างค่าในเครื่องได้จริงเวลาอาจารย์ใช้งานเสร็จ
   function logout() {
-    // token.value = null
-    // user.value  = null
-    // localStorage.removeItem('token')
-    // localStorage.removeItem('user')
-    // delete axios.defaults.headers.common['Authorization']
+    token.value = null
+    user.value  = null
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    localStorage.removeItem('role')       // ล้างค่าสิทธิ์เสริมที่หน้าบ้านเซ็ตไว้
+    localStorage.removeItem('full_name')  // ล้างชื่อเสริมที่หน้าบ้านเซ็ตไว้
+    delete axios.defaults.headers.common['Authorization']
   }
 
   // set token on app load

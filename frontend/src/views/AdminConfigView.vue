@@ -114,8 +114,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import axios from 'axios' //  ใช้ axios ยิงเข้าหลังบ้าน Node.js ของเราเอง ชัวร์สุดปลอดภัยสุด
 
-// โครงสร้างตัวแปรเก็บข้อมูลตามหน้ากระดาษร่าง
 const formData = ref({
   term: '1',
   academic_year: '2569',
@@ -126,33 +126,30 @@ const formData = ref({
 
 const isSubmitting = ref(false)
 
-// ฟังก์ชันดึงค่าปัจจุบันมาพรีวิว (ยังคงเป็นระบบจำลอง)
+//  1. ดึงข้อมูลล่าสุดผ่าน API ของหลังบ้านเราเอง
 const fetchCurrentSettings = async () => {
   try {
-    const savedData = localStorage.getItem('mock_system_settings')
-    if (savedData) {
-      formData.value = JSON.parse(savedData)
+    // ปรับ Port ตัวเลขหลัง localhost ให้ตรงกับเซิร์ฟเวอร์หลังบ้าน Node.js ของหนูน้า (เช่น 3000 หรือ 5000)
+    const response = await axios.get('http://localhost:3000/api/system/settings')
+    if (response.data) {
+      formData.value = response.data
     }
   } catch (error) {
     console.error('ดึงข้อมูลตั้งค่ากลางไม่สำเร็จ:', error)
   }
 }
 
-// ฟังก์ชันกด SAVE แบบจำลองชั่วคราว (ไม่ต้องง้อหลังบ้าน)
+//  2. เซฟข้อมูลยิงผ่านหลังบ้าน Node.js เอาไปบันทึกลง Supabase อีกทอดหนึ่ง
 const handleSave = async () => {
   isSubmitting.value = true
-  
-  // โหลดหน่วงเวลา 1 วินาที ให้ดูสมจริง
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
   try {
-    // เซฟเก็บไว้ในเครื่องเราเล่น ๆ ก่อน
-    localStorage.setItem('mock_system_settings', JSON.stringify(formData.value))
-    
-    // เด้งหน้าต่างแจ้งเตือนความสำเร็จ
-    alert(' บันทึกข้อมูลระบบกลางสำเร็จ ')
+    const response = await axios.post('http://localhost:3000/api/system/settings', formData.value)
+    if (response.data.success) {
+      alert('บันทึกข้อมูลระบบกลางขึ้นฐานข้อมูลสำเร็จ')
+    }
   } catch (error) {
-    console.error(error)
+    console.error('บันทึกข้อมูลล้มเหลว:', error)
+    alert('เกิดข้อผิดพลาด กรุณาเช็กการเชื่อมต่อเซิร์ฟเวอร์หลังบ้าน')
   } finally {
     isSubmitting.value = false
   }

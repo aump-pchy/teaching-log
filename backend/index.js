@@ -11,6 +11,7 @@ app.use('/api/auth',    require('./routes/auth'))
 app.use('/api/users',   require('./routes/users'))
 app.use('/api/logs',    require('./routes/logs'))
 app.use('/api/departments', require('./routes/departments'))
+app.use('/api/system', require('./routes/systemRoutes')) // เพิ่ม route สำหรับระบบกลาง
 
 app.get('/', (req, res) => res.json({ message: 'Teaching Log API 🟢' }))
 

@@ -155,31 +155,30 @@ onMounted(async () => {
 })
 
 const handleRegister = async () => {
-  if (form.password.length < 6) {
-    return alert('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษรขึ้นไป')
-  }
-
+  // 🎯 เพิ่มระบบเช็ครหัสผ่านให้ตรงกันก่อนส่ง (แถมความปลอดภัยให้ครับ)
   if (form.password !== form.confirmPassword) {
-    return alert('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง')
+    alert('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกันครับอ้าย!')
+    return
   }
 
   loading.value = true
   try {
-    // ส่งข้อมูลสมัครสมาชิกไปที่หลังบ้าน (เซ็ต role เริ่มต้นเป็น teacher อัตโนมัติ)
-    await axios.post(`${API_URL}/users`, {
-      full_name: form.full_name,
+    // 🎯 ดึงค่าผ่าน form.xxxx ให้ตรงกับตระกูล reactive ด้านบน
+    const payload = {
       email: form.email,
       password: form.password,
-      department_id: Number(form.department_id),
-      role: 'teacher' 
-    })
+      full_name: form.full_name,
+      department_id: Number(form.department_id) // แปลงเป็นตัวเลข int4 ให้หลังบ้าน
+    }
 
-    alert('🎉 ลงทะเบียนเสร็จสิ้น! กรุณารออาจารย์ผู้ดูแลระบบ (Admin) อนุมัติสิทธิ์เข้าใช้งานน')
-    router.push('/login')
+    // ยิงไปหาหลังบ้านพอร์ต 3000 เส้นทางสมัครสมาชิก
+    const res = await axios.post(`${API_URL}/auth/register`, payload)
+    
+    alert(res.data.message) // แจ้งเตือนสมัครสำเร็จ รออนุมัติ
+    router.push('/login')    // เตะหน้าจอกลับไปรอหน้าล็อกอิน
   } catch (err) {
-    console.error(err)
-    const errorMsg = err.response?.data?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์'
-    alert(`ลงทะเบียนไม่สำเร็จ: ${errorMsg}`)
+    console.error('สมัครสมาชิกฟรอนต์เอนด์ล้มเหลว:', err)
+    alert(err.response?.data?.error || 'เกิดข้อผิดพลาดในการสมัครสมาชิก')
   } finally {
     loading.value = false
   }
