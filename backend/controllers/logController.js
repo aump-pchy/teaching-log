@@ -78,7 +78,7 @@ async function getAllLogs(req, res) {
 }
 
 /**
- * GET /api/logs/:id (เวอร์ชันแก้ไขผสานร่างให้หน้าบ้านไม่ระเบิด)
+ * GET /api/logs/:id
  */
 async function getLogById(req, res) {
   try {
@@ -93,7 +93,7 @@ async function getLogById(req, res) {
     users (
       full_name,
       department_id,
-      departments ( name )
+      departments ( name, headerName )
     )
   `)
   .eq('id', id)
