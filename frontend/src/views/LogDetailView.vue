@@ -48,10 +48,9 @@
         </div>
         
         <div class="header-inline-group mt-6">
-          <span>สัปดาห์ที่ <input type="text" v-model="logData.week" :disabled="!isEditing" class="dotted-input w-60 text-center" /></span>
-          <span>ระหว่างวันที่ <input type="text" v-model="logData.start_date" :disabled="!isEditing" class="dotted-input w-60 text-center" /></span>
-          <span>เดือน <input type="text" v-model="logData.month" :disabled="!isEditing" class="dotted-input w-150 text-center" /></span>
-          <span>พ.ศ. <input type="text" v-model="logData.year" :disabled="!isEditing" class="dotted-input w-80 text-center" /></span>
+          <span style="white-space:nowrap">สัปดาห์ที่ <input type="text" v-model="logData.week" :disabled="!isEditing" class="dotted-input text-center" style="width:40px" /></span>
+          <span style="white-space:nowrap">ระหว่างวันที่ <input type="text" v-model="logData.date_from_full" :disabled="!isEditing" class="dotted-input" style="width:160px" /></span>
+          <span style="white-space:nowrap">ถึง <input type="text" v-model="logData.date_to_full" :disabled="!isEditing" class="dotted-input" style="width:160px" /></span>
         </div>
 
         <div class="header-inline-group mt-6">
@@ -182,19 +181,37 @@
 
       <div class="results-section mt-12">
         <p class="topic-bold-title">6. <u>ผลการจัดการเรียนรู้</u> (ตามสมรรถนะที่พึงประสงค์)</p>
-        <div class="text-row-underlined-box mt-4">
-          <p><strong>พุทธิพิสัย:</strong> <textarea v-model="resultsData.knowledge" :disabled="!isEditing" class="dotted-textarea" rows="2"></textarea></p>
-          <p class="mt-4"><strong>ทักษะพิสัย:</strong> <textarea v-model="resultsData.skill" :disabled="!isEditing" class="dotted-textarea" rows="2"></textarea></p>
-          <p class="mt-4"><strong>จิตพิสัย:</strong> <textarea v-model="resultsData.attitude" :disabled="!isEditing" class="dotted-textarea" rows="2"></textarea></p>
-          <p class="mt-4"><strong>การประยุกต์ใช้งาน:</strong> <textarea v-model="resultsData.apply" :disabled="!isEditing" class="dotted-textarea" rows="2"></textarea></p>
+        <div class="outcome-list mt-4">
+          <div class="outcome-row">
+            <span class="outcome-label">○ พุทธิพิสัย</span>
+            <input type="text" v-model="resultsData.knowledge" :disabled="!isEditing" class="outcome-input" />
+          </div>
+          <div class="outcome-row">
+            <span class="outcome-label">○ ทักษะพิสัย</span>
+            <input type="text" v-model="resultsData.skill" :disabled="!isEditing" class="outcome-input" />
+          </div>
+          <div class="outcome-row">
+            <span class="outcome-label">○ จิตพิสัย</span>
+            <input type="text" v-model="resultsData.attitude" :disabled="!isEditing" class="outcome-input" />
+          </div>
+          <div class="outcome-row">
+            <span class="outcome-label">○ การประยุกต์</span>
+            <input type="text" v-model="resultsData.apply" :disabled="!isEditing" class="outcome-input" />
+          </div>
         </div>
       </div>
 
       <div class="results-section mt-12">
         <p class="topic-bold-title">7. <u>ปัญหาในการจัดการเรียนรู้ และ แนวทางการแก้ไขและพัฒนา</u></p>
-        <div class="text-row-underlined-box mt-4">
-          <p><strong>ปัญหาในการจัดการเรียนรู้:</strong> <textarea v-model="resultsData.problem" :disabled="!isEditing" class="dotted-textarea" rows="2"></textarea></p>
-          <p class="mt-4"><strong>แนวทางการแก้ไขและพัฒนา:</strong> <textarea v-model="resultsData.solution" :disabled="!isEditing" class="dotted-textarea" rows="2"></textarea></p>
+        <div class="outcome-list mt-4">
+          <div class="outcome-row">
+            <span class="outcome-label">○ ปัญหาในการจัดการเรียนรู้</span>
+            <input type="text" v-model="resultsData.problem" :disabled="!isEditing" class="outcome-input" />
+          </div>
+          <div class="outcome-row">
+            <span class="outcome-label">○ แนวทางการแก้ไขและพัฒนา</span>
+            <input type="text" v-model="resultsData.solution" :disabled="!isEditing" class="outcome-input" />
+          </div>
         </div>
       </div>
 
@@ -425,28 +442,57 @@ function showToast(message, type = 'success') {
 function mapApiToRefs(data) {
   // ── logData ──
   const att = Array.isArray(data.attendance) ? data.attendance : []
-  // ทำให้มีครบ 6 แถวเสมอ
-  const rows = Array(6).fill(null).map((_, i) => att[i] || {
-    date: '', period: '', time_range: '', total: '', present: '', percentage: '', remark: ''
+  // ฟังก์ชันแปลง ISO date → วันภาษาไทย เช่น "2026-06-18" → "18 มิถุนายน 2569"
+  function formatAttDate(raw) {
+    if (!raw) return ''
+    const isoMatch = typeof raw === 'string' && raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (isoMatch) {
+      const thaiM = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
+      const year  = parseInt(isoMatch[1])
+      const month = parseInt(isoMatch[2]) - 1
+      const day   = parseInt(isoMatch[3])
+      return `${day} ${thaiM[month]} ${year + 543}`
+    }
+    return raw
+  }
+
+  // ทำให้มีครบ 6 แถวเสมอ และแปลงวันที่เป็นภาษาไทย
+  const rows = Array(6).fill(null).map((_, i) => {
+    const row = att[i] || { date: '', period: '', time_range: '', total: '', present: '', percentage: '', remark: '' }
+    return { ...row, date: formatAttDate(row.date) }
   })
 
   // semester ใน DB เก็บรวม "1/2569" → แยก semester / academic_year
   const [semPart, yearPart] = (data.semester || '1/2569').split('/')
 
-  // date_from เป็น text ใน DB — ถ้าเป็น ISO (YYYY-MM-DD) แปลงเป็นวัน/เดือน/ปีไทย
-  let startDay = '', startMonth = '', startYear = ''
-  const rawDate = data.date_from || ''
-  if (rawDate && rawDate.includes('-')) {
-    const d = new Date(rawDate)
-    if (!isNaN(d.getTime())) {
-      const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-                          'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
-      startDay   = String(d.getDate())
-      startMonth = thaiMonths[d.getMonth()]
-      startYear  = String(d.getFullYear() + 543)
+  // date_from / date_to — แปลงเป็นวัน/เดือน/ปีไทย
+  const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                      'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
+  function parseThaiDate(raw) {
+    if (!raw) return { day: '', month: '', year: '' }
+    // parse YYYY-MM-DD ตรงๆ ไม่ผ่าน Date() เพื่อป้องกัน timezone offset
+    const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (isoMatch) {
+      const year  = parseInt(isoMatch[1])
+      const month = parseInt(isoMatch[2]) - 1  // 0-indexed
+      const day   = parseInt(isoMatch[3])
+      return {
+        day:   String(day),
+        month: thaiMonths[month],
+        year:  String(year + 543)
+      }
     }
-  } else {
-    startDay = rawDate
+    return { day: raw, month: '', year: '' }
+  }
+  const startParsed = parseThaiDate(data.date_from || '')
+  const endParsed   = parseThaiDate(data.date_to   || '')
+
+  // รวม วัน เดือน ปี เป็น string เดียว เช่น "1 มิถุนายน 2569"
+  function formatFullDate(parsed) {
+    if (!parsed.day) return ''
+    if (parsed.month) return `${parsed.day} ${parsed.month} ${parsed.year}`
+    return parsed.day
   }
 
   logData.value = {
@@ -455,9 +501,8 @@ function mapApiToRefs(data) {
     teacher_name:   data.users?.full_name || '',
     department:     data.users?.departments?.name || '',
     week:           String(data.week || ''),
-    start_date:     startDay,
-    month:          startMonth,
-    year:           startYear,
+    date_from_full: formatFullDate(startParsed),
+    date_to_full:   formatFullDate(endParsed),
     subject_name:   data.subject_name   || '',
     subject_code:   data.subject_code   || '',
     topic:          data.topic          || '',
@@ -651,7 +696,7 @@ async function saveData() {
 // ─── Export PDF (jsPDF วาด text จริง — ดูรายละเอียดใน pdfBuilder.js) ───
 const exportPDF = async () => {
   const { buildLogPDF } = await import('./pdfBuilder.js')
-
+console.log(logData.value)  
   const pdf = await buildLogPDF({
     logData: logData.value,
     methodsData: methodsData.value,
@@ -807,7 +852,7 @@ input:disabled, textarea:disabled, select:disabled {
 
 .official-header-layout { text-align: center; margin-bottom: 5px; }
 .form-main-title { font-size: 15px; font-weight: bold; margin-bottom: 8px; }
-.header-inline-group { display: flex; justify-content: flex-start; gap: 8px; width: 100%; }
+.header-inline-group { display: flex; justify-content: flex-start; gap: 8px; width: 100%; flex-wrap: nowrap; align-items: baseline; }
 
 .dotted-input {
   border: none;
@@ -816,7 +861,7 @@ input:disabled, textarea:disabled, select:disabled {
   background-size: 7px 1px;
   background-position: left bottom;
   border-radius: 0;
-  padding: 0 4px 2px 4px;
+  padding: 0 4px 0px 4px;
   font-size: 14.5px;
 }
 .dotted-input:focus { outline: none; background-image: linear-gradient(to right, #000000 100%, transparent 0%); background-size: 100% 1px; }
@@ -868,6 +913,22 @@ input:disabled, textarea:disabled, select:disabled {
   width: 100%; border: 1px solid #9ca3af; border-radius: 4px; padding: 4px;
   font-size: 14px; line-height: 1.3; resize: none; background: transparent;
 }
+
+/* ข้อ 6 และ 7 — แบบเส้นประ ไม่มีกรอบ */
+.outcome-list { display: flex; flex-direction: column; gap: 4px; }
+.outcome-row { display: flex; align-items: baseline; gap: 6px; }
+.outcome-label { font-size: 14px; white-space: nowrap; min-width: 160px; }
+.outcome-input {
+  flex: 1;
+  border: none;
+  border-bottom: 1px solid #000;
+  background: transparent;
+  font-size: 14px;
+  font-family: inherit;
+  padding: 0 4px;
+}
+.outcome-input:focus { outline: none; }
+.outcome-input:disabled { background: transparent; }
 
 /* ลายเซ็นและการตรวจสอบ */
 .signature-layout-grid { display: grid; grid-template-cols: 1fr 1fr; text-align: center; font-size: 14px; margin-top: 8px; }

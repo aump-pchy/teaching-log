@@ -76,7 +76,7 @@ function wrapText(pdf, text, maxWidth, fontSize) {
 // ════════════════════════════════════════════
 function drawPage1(pdf, logData, methodsData) {
   let y = MARGIN_T + 5
-
+console.log('logData:', logData)
   // หัวเรื่อง
   pdf.setFont('Sarabun', 'bold')
   pdf.setFontSize(13)
@@ -100,9 +100,8 @@ function drawPage1(pdf, logData, methodsData) {
   y += 6.5
 
   dottedField(pdf, 'สัปดาห์ที่', logData.week, MARGIN_L, y, 18)
-  dottedField(pdf, 'ระหว่างวันที่', logData.start_date, MARGIN_L + 22, y, 28)
-  dottedField(pdf, 'เดือน', logData.month, MARGIN_L + 54, y, 45)
-  dottedField(pdf, 'พ.ศ.', logData.year, MARGIN_L + 103, y, CONTENT_W - 103)
+  dottedField(pdf, 'ระหว่างวันที่', logData.date_from_full, MARGIN_L + 22, y, 75)
+  dottedField(pdf, 'ถึง', logData.date_to_full, MARGIN_L + 100, y, CONTENT_W - 100)
   y += 6.5
 
   dottedField(pdf, 'ชื่อวิชา', logData.subject_name, MARGIN_L, y, 95)
@@ -453,11 +452,13 @@ function labeledTextBox(pdf, label, value, x, y) {
   pdf.setFont('Sarabun', 'normal')
   const lines = wrapText(pdf, value || '-', CONTENT_W - labelW - 2, 10)
   pdf.text(lines, x + labelW + 1, y)
+  // เส้นประใต้แทนกรอบ
   pdf.setLineWidth(0.2)
-  pdf.setDrawColor(150, 150, 150)
-  pdf.rect(x, y - 4, CONTENT_W, Math.max(7, lines.length * 4.2 + 2))
+  pdf.setLineDashPattern([0.5, 0.7], 0)
   pdf.setDrawColor(0, 0, 0)
-  return y + Math.max(7, lines.length * 4.2 + 2) + 4
+  pdf.line(x, y + 1.5, x + CONTENT_W, y + 1.5)
+  pdf.setLineDashPattern([], 0)
+  return y + Math.max(7, lines.length * 4.2 + 2) + 2
 }
 
 // ════════════════════════════════════════════
