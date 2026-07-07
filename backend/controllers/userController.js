@@ -1,144 +1,136 @@
-const supabase = require('../db/supabase'); // ใช้เป็นแค่ DB client เท่านั้น ไม่ใช่ระบบ auth แล้ว
-const bcrypt = require('bcrypt');
+const pool = require('../db/pool')
+const bcrypt = require('bcrypt')
 
-// 1. ดึงข้อมูลผู้ใช้ทั้งหมด (เวอร์ชันปล่อยจอย ไม่กรองข้อมูลทิ้ง)
 exports.getAllUsers = async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('users')
-      .select(`
-        id, 
-        email, 
-        full_name, 
-        role, 
-        department_id, 
-        is_approved,
-        departments (id, name)
-      `)
-      .order('id', { ascending: true });
+    const result = await pool.query(`
+      SELECT u.id, u.email, u.full_name, u.role, u.department_id, u.is_approved,
+             d.id AS dept_id, d.name AS dept_name
+      FROM users u
+      LEFT JOIN departments d ON d.id = u.department_id
+      ORDER BY u.id ASC
+    `)
 
-    if (error) throw error;
+    const cleanData = result.rows.map(row => ({
+      id: row.id,
+      email: row.email,
+      full_name: row.full_name,
+      role: row.role,
+      department_id: row.department_id,
+      is_approved: row.is_approved,
+      departments: row.dept_id ? { id: row.dept_id, name: row.dept_name } : { id: null, name: 'ยังไม่ระบุแผนก' }
+    }))
 
-    const cleanData = data.map(user => ({
-      ...user,
-      departments: user.departments || { id: null, name: 'ยังไม่ระบุแผนก' }
-    }));
-
-    return res.status(200).json(cleanData);
+    return res.status(200).json(cleanData)
   } catch (error) {
-    console.error('Backend Error (getAllUsers):', error.message);
-    return res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลผู้ใช้งานจากระบบได้' });
+    console.error('Backend Error (getAllUsers):', error.message)
+    return res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลผู้ใช้งานจากระบบได้' })
   }
-};
+}
 
-// 2. อัปเดตข้อมูลผู้ใช้ / สลับสิทธิ์การอนุมัติ (is_approved) และรีเซ็ทรหัสผ่าน
-// 🎯 [แก้ไข] ตัดการเรียก supabase.auth.admin.updateUserById() ออกทั้งหมด
-// เพราะตอนนี้รหัสผ่านที่ใช้ login จริงคือ password_hash ในตาราง users เท่านั้น
-// ไม่ต้องไปหา auth_id หรือ sync กับ Supabase Auth อีกต่อไป — แก้คอลัมน์เดียวจบ
-exports.updateUser = async (req, res) => {
-  const { id } = req.params;
-  const { full_name, email, department_id, role, is_approved, password } = req.body;
-
-  try {
-    const updateData = {
-      full_name,
-      email,
-      role,
-      is_approved: is_approved !== undefined ? is_approved : true
-    };
-
-    if (department_id) {
-      updateData.department_id = Number(department_id);
-    }
-
-    // จัดการเรื่อง Password — แฮชแล้วเก็บลง password_hash ตรงๆ คอลัมน์เดียวจบ
-    if (password && password.trim() !== "") {
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-      updateData.password_hash = hashedPassword;
-    }
-
-    const { data, error } = await supabase
-      .from('users')
-      .update(updateData)
-      .eq('id', id)
-      .select();
-
-    if (error) throw error;
-
-    return res.status(200).json({ message: 'อัปเดตข้อมูลผู้ใช้งานสำเร็จแล้วครับอ้าย!', data });
-  } catch (error) {
-    console.error('Backend Error (updateUser):', error.message);
-    return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล', details: error.message });
-  }
-};
-
-// 3. ลบผู้ใช้งานออกจากระบบ
-exports.deleteUser = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const { error } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-    return res.status(200).json({ message: 'ลบข้อมูลผู้ใช้งานออกจากระบบเรียบร้อยแล้ว' });
-  } catch (error) {
-    console.error('Backend Error (deleteUser):', error.message);
-    return res.status(500).json({ error: 'ไม่สามารถลบข้อมูลผู้ใช้งานรายนี้ได้' });
-  }
-};
-
-// 4. ดึงข้อมูลผู้ใช้รายบุคคล
-// 🎯 [แก้ไข] ระบุ field ชัดเจนแทน select('*') กัน password_hash หลุดไปกับ response
+// ⚠️ เช็คสิทธิ์ในนี้: admin ดูใครก็ได้, คนอื่นดูได้แค่ id ของตัวเอง
 exports.getUserById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, email, full_name, role, department_id, is_approved, created_at, departments(name)')
-      .eq('id', id)
-      .single();
+    const { id } = req.params
+    const requester = req.user
 
-    if (error) throw error;
-    return res.status(200).json(data);
-  } catch (error) {
-    return res.status(500).json({ error: 'ไม่พบข้อมูลผู้ใช้งาน' });
-  }
-};
-
-// 5. สร้างผู้ใช้งานใหม่
-// 🎯 [แก้ไข] ตัดการเรียก supabase.auth.admin.createUser() ออกทั้งหมด
-// สร้างแค่แถวในตาราง users พร้อมแฮชรหัสผ่าน ก็ login ได้แล้วเพราะระบบ auth ใหม่เช็กจาก password_hash โดยตรง
-exports.createUser = async (req, res) => {
-  try {
-    const { email, password, full_name, role, department_id } = req.body;
-
-    if (!email || !password || !full_name || !department_id) {
-      return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+    if (requester.role !== 'admin' && requester.id !== Number(id)) {
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ใช้งานรายนี้' })
     }
 
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const result = await pool.query(`
+      SELECT u.id, u.email, u.full_name, u.role, u.department_id, u.is_approved, u.created_at,
+             d.name AS department_name
+      FROM users u
+      LEFT JOIN departments d ON d.id = u.department_id
+      WHERE u.id = $1
+    `, [id])
 
-    const { data, error } = await supabase
-      .from('users')
-      .insert([{ 
-          email, 
-          password_hash: hashedPassword,
-          full_name, 
-          role, 
-          department_id: Number(department_id), 
-          is_approved: true 
-      }])
-      .select();
-
-    if (error) throw error;
-    return res.status(201).json(data);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลผู้ใช้งาน' })
+    }
+    return res.status(200).json(result.rows[0])
   } catch (error) {
-    console.error('Backend Error (createUser):', error.message);
-    return res.status(500).json({ error: 'ไม่สามารถสร้างผู้ใช้งานได้' });
+    return res.status(500).json({ error: 'ไม่พบข้อมูลผู้ใช้งาน' })
   }
-};
+}
+
+// ⚠️ เช็คสิทธิ์ในนี้: admin แก้ได้ทุก field, คนอื่นแก้ได้แค่ของตัวเอง และแก้ได้แค่ full_name/email/password เท่านั้น
+// (ต่อให้ frontend ถูก bypass ส่ง role หรือ department_id มา ก็จะถูกเมิน ไม่กระทบข้อมูลจริง)
+exports.updateUser = async (req, res) => {
+  const { id } = req.params
+  const requester = req.user
+  const isAdmin = requester.role === 'admin'
+  const isSelf = requester.id === Number(id)
+
+  if (!isAdmin && !isSelf) {
+    return res.status(403).json({ error: 'ไม่มีสิทธิ์แก้ไขข้อมูลผู้ใช้งานรายนี้' })
+  }
+
+  const { full_name, email, department_id, role, is_approved, password } = req.body
+
+  try {
+    const fields = []
+    const values = []
+    let i = 1
+
+    if (full_name !== undefined) { fields.push(`full_name = $${i++}`); values.push(full_name) }
+    if (email !== undefined) { fields.push(`email = $${i++}`); values.push(email) }
+
+    // ฟิลด์เหล่านี้แก้ได้เฉพาะ admin เท่านั้น (ป้องกันครูยกระดับสิทธิ์ตัวเอง)
+    if (isAdmin) {
+      if (role !== undefined) { fields.push(`role = $${i++}`); values.push(role) }
+      if (is_approved !== undefined) { fields.push(`is_approved = $${i++}`); values.push(is_approved) }
+      if (department_id) { fields.push(`department_id = $${i++}`); values.push(Number(department_id)) }
+    }
+
+    if (password && password.trim() !== '') {
+      const hashedPassword = await bcrypt.hash(password, 10)
+      fields.push(`password_hash = $${i++}`)
+      values.push(hashedPassword)
+    }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'ไม่มีข้อมูลให้แก้ไข' })
+    }
+
+    values.push(id)
+    const result = await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${i} RETURNING *`, values)
+
+    return res.status(200).json({ message: 'อัปเดตข้อมูลผู้ใช้งานสำเร็จแล้วครับอ้าย!', data: result.rows })
+  } catch (error) {
+    console.error('Backend Error (updateUser):', error.message)
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล', details: error.message })
+  }
+}
+
+exports.deleteUser = async (req, res) => {
+  const { id } = req.params
+  try {
+    await pool.query('DELETE FROM users WHERE id = $1', [id])
+    return res.status(200).json({ message: 'ลบข้อมูลผู้ใช้งานออกจากระบบเรียบร้อยแล้ว' })
+  } catch (error) {
+    console.error('Backend Error (deleteUser):', error.message)
+    return res.status(500).json({ error: 'ไม่สามารถลบข้อมูลผู้ใช้งานรายนี้ได้' })
+  }
+}
+
+exports.createUser = async (req, res) => {
+  try {
+    const { email, password, full_name, role, department_id } = req.body
+    if (!email || !password || !full_name || !department_id) {
+      return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const result = await pool.query(
+      `INSERT INTO users (email, password_hash, full_name, role, department_id, is_approved)
+       VALUES ($1, $2, $3, $4, $5, true) RETURNING *`,
+      [email, hashedPassword, full_name, role, Number(department_id)]
+    )
+    return res.status(201).json(result.rows)
+  } catch (error) {
+    console.error('Backend Error (createUser):', error.message)
+    return res.status(500).json({ error: 'ไม่สามารถสร้างผู้ใช้งานได้' })
+  }
+}

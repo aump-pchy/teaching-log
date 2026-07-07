@@ -1,140 +1,72 @@
-const supabase = require('../db/supabase')
+const pool = require('../db/pool')
 
-/**
- * GET /api/departments
- * ทุกคนเข้าถึงได้ (ใช้ตอนกรอก form dropdown)
- */
 async function getAllDepartments(req, res) {
   try {
-    const { data: departments, error } = await supabase
-      .from('departments')
-      .select('id, code, name, headerName')
-      .order('id', { ascending: true })
-
-    if (error) {
-      return res.status(400).json({ error: error.message })
-    }
-
-    return res.status(200).json(departments)
+    const result = await pool.query('SELECT id, code, name, "headerName" FROM departments ORDER BY id ASC')
+    return res.status(200).json(result.rows)
   } catch (err) {
     console.error('GetAllDepartments Error:', err)
     return res.status(500).json({ error: 'Server error' })
   }
 }
 
-/**
- * POST /api/departments
- * admin only
- * body: { code, name, headerName }
- */
 async function createDepartment(req, res) {
   try {
     const { code, name, headerName } = req.body
-
     if (!code || !name || !headerName) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
     }
 
-    // validate ว่าไม่ซ้ำ (code หรือ name)
-    const { data: existingDept, error: checkError } = await supabase
-      .from('departments')
-      .select('id')
-      .or(`code.eq.${code},name.eq.${name}`)
-
-    if (checkError) {
-      return res.status(400).json({ error: checkError.message })
+    const existing = await pool.query('SELECT id FROM departments WHERE code = $1 OR name = $2', [code, name])
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
     }
 
-    if (existingDept && existingDept.length > 0) {
-      return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' }) // (แผนกวิชาหรือโค้ดนี้มีอยู่ในระบบแล้ว)
-    }
-
-    const { data: newDept, error } = await supabase
-      .from('departments')
-      .insert([{ code, name, headerName }])
-      .select()
-      .single()
-
-    if (error) {
-      return res.status(400).json({ error: error.message })
-    }
-
-    return res.status(201).json(newDept)
+    const result = await pool.query(
+      'INSERT INTO departments (code, name, "headerName") VALUES ($1, $2, $3) RETURNING *',
+      [code, name, headerName]
+    )
+    return res.status(201).json(result.rows[0])
   } catch (err) {
     console.error('CreateDepartment Error:', err)
     return res.status(500).json({ error: 'Server error' })
   }
 }
 
-/**
- * PUT /api/departments/:id
- * admin only
- * body: { code, name, headerName }
- */
 async function updateDepartment(req, res) {
   try {
     const { id } = req.params
     const { code, name, headerName } = req.body
-
     if (!code || !name || !headerName) {
       return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
     }
 
-    const { data: updatedDept, error } = await supabase
-      .from('departments')
-      .update({ code, name, headerName })
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) {
-      return res.status(400).json({ error: error.message })
-    }
-    if (!updatedDept) {
+    const result = await pool.query(
+      'UPDATE departments SET code = $1, name = $2, "headerName" = $3 WHERE id = $4 RETURNING *',
+      [code, name, headerName, id]
+    )
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'ไม่พบข้อมูล' })
     }
-
-    return res.status(200).json(updatedDept)
+    return res.status(200).json(result.rows[0])
   } catch (err) {
     console.error('UpdateDepartment Error:', err)
     return res.status(500).json({ error: 'Server error' })
   }
 }
 
-/**
- * DELETE /api/departments/:id
- * admin only
- */
 async function deleteDepartment(req, res) {
   try {
     const { id } = req.params
-
-    const { count, error: countError } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .eq('department_id', id)
-
-    if (countError) {
-      return res.status(400).json({ error: countError.message })
-    }
-    if (count > 0) {
-      return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' }) // (ห้ามลบเนื่องจากยังมีบุคลากรสังกัดแผนกนี้อยู่)
+    const countResult = await pool.query('SELECT COUNT(*) FROM users WHERE department_id = $1', [id])
+    if (parseInt(countResult.rows[0].count) > 0) {
+      return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' })
     }
 
-    const { data, error } = await supabase
-      .from('departments')
-      .delete()
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) {
-      return res.status(400).json({ error: error.message })
-    }
-    if (!data) {
+    const result = await pool.query('DELETE FROM departments WHERE id = $1 RETURNING *', [id])
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'ไม่พบข้อมูล' })
     }
-
     return res.status(200).json({ message: 'ลบแผนกสำเร็จ' })
   } catch (err) {
     console.error('DeleteDepartment Error:', err)

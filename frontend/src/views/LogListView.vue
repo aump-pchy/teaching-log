@@ -147,15 +147,16 @@ const router = useRouter()
 const rawLogs = ref([])
 
 const selectedSemester = ref('1/2569')
-const isOpen = ref(false) // 🌟 เพิ่มตัวนี้เข้าไปเพื่อใช้เปิด-ปิดกล่องจำ
+const isOpen = ref(false)
 const departments = ["IT", "AI", "EE", "ME"]
 const selectedDept = ref("")
 const searchQuery = ref('')
 
-// ตัวแปรเก็บข้อมูลครูที่ได้จากการแกะ Token ฝั่งหน้าบ้าน
 const currentUserId = ref(null)
 
-// ฟังก์ชันแกะข้อมูลจาก JWT Token ที่เก็บในเครื่อง เพื่อหา ID ของครูที่กำลังล็อกอิน
+// ใช้ VITE_API_URL จาก .env (ตอน build ผ่าน Docker จะถูกกำหนดเป็น /api ให้ผ่าน nginx proxy)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token')
   if (!token) return null
@@ -177,8 +178,8 @@ const getUserIdFromToken = () => {
 const fetchLogs = async () => {
   try {
     const url = selectedDept.value 
-      ? `http://localhost:3000/api/logs?dept=${selectedDept.value}` 
-      : 'http://localhost:3000/api/logs'
+      ? `${API_URL}/logs?dept=${selectedDept.value}` 
+      : `${API_URL}/logs`
       
     const token = localStorage.getItem('token') 
     
@@ -205,7 +206,6 @@ watch(selectedSemester, () => {
   fetchLogs()
 })
 
-// ระบบกรองและพิมพ์ค้นหา
 const filteredLogs = computed(() => {
   console.log("👉 ID ของครูที่ล็อกอินอยู่ปัจจุบันคือ:", currentUserId.value)
   console.log("📦 ก้อนข้อมูลที่ได้มาจากหลังบ้านแถวแรกคือ:", rawLogs.value[0])
@@ -215,14 +215,12 @@ const filteredLogs = computed(() => {
   
   let result = [...rawLogs.value]
   
-  // 1. ด่านกรองสิทธิ์: ถ้าเป็นครูทั่วไป (teacher) ให้กรองเอาเฉพาะข้อมูลของตัวเอง
   if (userRole !== 'admin') {
     if (currentTeacherName) {
       result = result.filter(log => log.teacher_name === currentTeacherName)
     }
   }
   
-  // 2. ด่านกรองตามเทอม
   if (selectedSemester.value) {
     result = result.filter(log => {
       const logTerm = log.semester || log.term || '1/2569'
@@ -230,7 +228,6 @@ const filteredLogs = computed(() => {
     })
   }
   
-  // 3. ด่านพิมพ์ค้นหา รหัสวิชา / ชื่อวิชา / ชื่อครู
   if (searchQuery.value && searchQuery.value.trim() !== '') {
     const query = searchQuery.value.toLowerCase().trim()
     result = result.filter(log => {
@@ -261,7 +258,6 @@ if (typeof window !== 'undefined') {
 
 <style scoped>
 
-/*  บังคับใช้ฟอนต์ Sarabun และฟอนต์ระบบสไตล์ไม่มีหัวโมเดิร์นเคลียร์แบบภาพแรก */
 .app-container, 
 .app-container *,
 table, 
@@ -282,17 +278,14 @@ button {
   box-shadow: -4px 7px 14px rgba(0, 0, 0, 0.2), -2px 4px 8px rgba(0, 0, 0, 0.12) !important;
 }
 
-/* 🌟 2. เวทมนตร์สั่งกล่องเด้ง (Option) ของเบราว์เซอร์ให้โค้งมน ไม่แข็งทื่อบังเงา! */
 .project-select-box option {
   font-family: 'Sarabun', sans-serif !important;
   background-color: #ffffff !important;
   color: #334155 !important;
   padding: 12px 16px !important;
-  /* คำสั่งลับบังคับขอบมนที่กล่องเด้งย่อย */
   border-radius: 12px !important; 
 }
 
-/* ล้างขอบสีฟ้าน่าเกลียดออกให้หมดเวลาจิ้ม */
 select:focus {
   outline: none !important;
   box-shadow: none !important;
@@ -303,7 +296,6 @@ select:focus {
   white-space: nowrap;
 }
 
-/* ปรับแต่งปุ่มกดดูรายละเอียดให้ฟอนต์หนาคมชัดขึ้น */
 .btn-detail {
   font-weight: 600 !important;
 }
@@ -311,6 +303,6 @@ select:focus {
 
 <style>
 html, body {
-  overflow-y: scroll !important; /* บังคับให้เบราว์เซอร์หลักสร้างแถบเลื่อนแนวตั้งค้างไว้ถาวร */
+  overflow-y: scroll !important;
 }
 </style>

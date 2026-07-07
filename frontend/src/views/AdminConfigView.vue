@@ -114,7 +114,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios' //  ใช้ axios ยิงเข้าหลังบ้าน Node.js ของเราเอง ชัวร์สุดปลอดภัยสุด
+import axios from 'axios'
 
 const formData = ref({
   term: '1',
@@ -126,11 +126,13 @@ const formData = ref({
 
 const isSubmitting = ref(false)
 
-//  1. ดึงข้อมูลล่าสุดผ่าน API ของหลังบ้านเราเอง
+// ใช้ VITE_API_URL จาก .env (ตอน build ผ่าน Docker จะถูกกำหนดเป็น /api ให้ผ่าน nginx proxy)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+
+// 1. ดึงข้อมูลล่าสุดผ่าน API ของหลังบ้านเราเอง
 const fetchCurrentSettings = async () => {
   try {
-    // ปรับ Port ตัวเลขหลัง localhost ให้ตรงกับเซิร์ฟเวอร์หลังบ้าน Node.js ของหนูน้า (เช่น 3000 หรือ 5000)
-    const response = await axios.get('http://localhost:3000/api/system/settings')
+    const response = await axios.get(`${API_URL}/system/settings`)
     if (response.data) {
       formData.value = response.data
     }
@@ -139,11 +141,11 @@ const fetchCurrentSettings = async () => {
   }
 }
 
-//  2. เซฟข้อมูลยิงผ่านหลังบ้าน Node.js เอาไปบันทึกลง Supabase อีกทอดหนึ่ง
+// 2. เซฟข้อมูลยิงผ่านหลังบ้าน Node.js เอาไปบันทึกลง Postgres อีกทอดหนึ่ง
 const handleSave = async () => {
   isSubmitting.value = true
   try {
-    const response = await axios.post('http://localhost:3000/api/system/settings', formData.value)
+    const response = await axios.post(`${API_URL}/system/settings`, formData.value)
     if (response.data.success) {
       alert('บันทึกข้อมูลระบบกลางขึ้นฐานข้อมูลสำเร็จ')
     }
