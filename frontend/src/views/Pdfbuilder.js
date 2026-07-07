@@ -111,8 +111,8 @@ console.log('logData:', logData)
   dottedField(pdf, 'เรื่อง/หัวข้อที่สอน', logData.topic, MARGIN_L, y, CONTENT_W)
   y += 8
 
-  // ตารางการสอน
-  const colW = [22, 18, 24, 17, 17, 17, CONTENT_W - 22 - 18 - 24 - 17 - 17 - 17]
+  // ตารางการสอน (ตัดคอลัมน์ "ปัญหาและข้อเสนอแนะ" ออกตามที่ผู้ใช้ระบุ)
+  const colW = [30, 25, 33, 27, 27, CONTENT_W - 30 - 25 - 33 - 27 - 27]
   const colX = [MARGIN_L]
   for (let i = 0; i < colW.length; i++) colX.push(colX[i] + colW[i])
 
@@ -127,8 +127,6 @@ console.log('logData:', logData)
   centerText(pdf, 'วัน/เวลาดำเนินการจัดการเรียนรู้', colX[0], colX[0] + colW[0] + colW[1] + colW[2], y + 3.8)
   pdf.rect(colX[3], y, colW[3] + colW[4] + colW[5], headerH1)
   centerText(pdf, 'จำนวนนักเรียน นักศึกษา', colX[3], colX[3] + colW[3] + colW[4] + colW[5], y + 3.8)
-  pdf.rect(colX[6], y, colW[6], headerH1 + headerH2)
-  centerTextMultiline(pdf, ['ปัญหาและข้อเสนอ', 'แนะ'], colX[6], colX[6] + colW[6], y + 4, 3.6)
 
   y += headerH1
 
@@ -151,16 +149,10 @@ console.log('logData:', logData)
       pdf.rect(colX[i], y, colW[i], rowH)
       if (vals[i]) centerText(pdf, String(vals[i]), colX[i], colX[i] + colW[i], y + 4)
     }
-    pdf.rect(colX[6], y, colW[6], rowH)
-    if (row.remark) {
-      const lines = pdf.splitTextToSize(row.remark, colW[6] - 2)
-      pdf.text(lines[0] || '', colX[6] + 1, y + 4)
-    }
     y += rowH
   }
   y += 6
 
-  // รายละเอียดวิธีการจัดการเรียนรู้
   pdf.setFont('Sarabun', 'bold')
   pdf.setFontSize(11)
   const headTitle = 'รายละเอียดวิธีการจัดการเรียนรู้'
@@ -264,27 +256,33 @@ function drawPage2(pdf, logData, methodsData, resultsData) {
 
 // ════════════════════════════════════════════
 // หน้า 3: ตารางบันทึกการตรวจสอบ
+// (ดึงชื่อจริงจาก logData / systemSettings — ห้าม hardcode ชื่อ, ไม่มีกรอบ)
 // ════════════════════════════════════════════
-function drawPage3(pdf) {
+function drawPage3(pdf, logData = {}, systemSettings = {}) {
   let y = MARGIN_T + 8
   const colW = CONTENT_W / 2
 
-  pdf.setLineWidth(0.3)
+  const headCurriculum = logData.head_curriculum || systemSettings.head_curriculum || 'ยังไม่ได้ระบุ'
+  const deputyAcademic = logData.deputy_academic || systemSettings.deputy_academic || 'ยังไม่ได้ระบุ'
+  const director       = logData.director        || systemSettings.director        || 'ยังไม่ได้ระบุ'
+
   const boxTop = y
-  pdf.rect(MARGIN_L, boxTop, CONTENT_W, 55)
-  pdf.line(MARGIN_L + colW, boxTop, MARGIN_L + colW, boxTop + 55)
 
   pdf.setFont('Sarabun', 'bold')
   pdf.setFontSize(10.5)
-  pdf.text('บันทึกการตรวจสอบ/คำแนะนำ', MARGIN_L + 3, y + 5)
-  pdf.text('บันทึกการตรวจสอบ/คำแนะนำ', MARGIN_L + colW + 3, y + 5)
+  pdf.text('บันทึกการตรวจสอบ/คำแนะนำ', MARGIN_L, y + 5)
+  pdf.text('บันทึกการตรวจสอบ/คำแนะนำ', MARGIN_L + colW, y + 5)
   pdf.setLineWidth(0.2)
-  pdf.line(MARGIN_L + 3, y + 5.6, MARGIN_L + 3 + pdf.getTextWidth('บันทึกการตรวจสอบ/คำแนะนำ'), y + 5.6)
-  pdf.line(MARGIN_L + colW + 3, y + 5.6, MARGIN_L + colW + 3 + pdf.getTextWidth('บันทึกการตรวจสอบ/คำแนะนำ'), y + 5.6)
+  pdf.line(MARGIN_L, y + 5.6, MARGIN_L + pdf.getTextWidth('บันทึกการตรวจสอบ/คำแนะนำ'), y + 5.6)
+  pdf.line(MARGIN_L + colW, y + 5.6, MARGIN_L + colW + pdf.getTextWidth('บันทึกการตรวจสอบ/คำแนะนำ'), y + 5.6)
 
+  // ช่องบันทึกความเห็น — เส้นประแทนกรอบสี่เหลี่ยม
   pdf.setLineWidth(0.2)
-  pdf.rect(MARGIN_L + 3, y + 8, colW - 6, 14)
-  pdf.rect(MARGIN_L + colW + 3, y + 8, colW - 6, 14)
+  pdf.setLineDashPattern([0.5, 0.7], 0)
+  pdf.setDrawColor(0, 0, 0)
+  pdf.line(MARGIN_L, y + 14, MARGIN_L + colW - 8, y + 14)
+  pdf.line(MARGIN_L + colW, y + 14, MARGIN_L + colW + colW - 8, y + 14)
+  pdf.setLineDashPattern([], 0)
 
   pdf.setFont('Sarabun', 'normal')
   pdf.setFontSize(9)
@@ -292,30 +290,35 @@ function drawPage3(pdf) {
   centerTextAt(pdf, 'ลงชื่อ.......................................................... ผู้ตรวจสอบ', MARGIN_L + colW / 2, sigY)
   centerTextAt(pdf, 'ลงชื่อ.......................................................... ผู้รับรอง', MARGIN_L + colW + colW / 2, sigY)
   sigY += 4.5
-  centerTextAt(pdf, '( ว่าที่ ร.ต. ชัชวาลย์ ป้อมสุวรรณ )', MARGIN_L + colW / 2, sigY)
-  centerTextAt(pdf, '( นายวิโรจน์ ยาบุษดี )', MARGIN_L + colW + colW / 2, sigY)
+  // ฝั่งซ้าย = หัวหน้างานพัฒนาหลักสูตรฯ (ผู้ตรวจสอบ) / ฝั่งขวา = รองผู้อำนวยการฝ่ายวิชาการ (ผู้รับรอง)
+  centerTextAt(pdf, `( ${headCurriculum} )`, MARGIN_L + colW / 2, sigY)
+  centerTextAt(pdf, `( ${deputyAcademic} )`, MARGIN_L + colW + colW / 2, sigY)
   sigY += 4.5
   centerTextAt(pdf, 'หัวหน้างานพัฒนาหลักสูตรและการจัดการเรียนรู้', MARGIN_L + colW / 2, sigY)
   centerTextAt(pdf, 'รองผู้อำนวยการฝ่ายวิชาการ', MARGIN_L + colW + colW / 2, sigY)
 
   y = boxTop + 55
-  pdf.setLineWidth(0.3)
-  pdf.rect(MARGIN_L, y, CONTENT_W, 32)
+  // เส้นคั่นบางๆ แทนกรอบ ก่อนส่วนอนุมัติของ ผอ.
+  pdf.setLineWidth(0.2)
+  pdf.line(MARGIN_L, y, MARGIN_L + CONTENT_W, y)
+  y += 5
+
   pdf.setFont('Sarabun', 'bold')
   pdf.setFontSize(10.5)
-  centerTextAt(pdf, 'บันทึกการอนุมัติจากผู้อำนวยการวิทยาลัย', PAGE_W / 2, y + 5)
+  centerTextAt(pdf, 'บันทึกการอนุมัติจากผู้อำนวยการวิทยาลัย', PAGE_W / 2, y)
   pdf.setLineWidth(0.2)
   const t = 'บันทึกการอนุมัติจากผู้อำนวยการวิทยาลัย'
   const tw = pdf.getTextWidth(t)
-  pdf.line((PAGE_W - tw) / 2, y + 5.6, (PAGE_W + tw) / 2, y + 5.6)
+  pdf.line((PAGE_W - tw) / 2, y + 0.6, (PAGE_W + tw) / 2, y + 0.6)
 
-  checkbox(pdf, PAGE_W / 2 - 35, y + 12, true, 'ทราบ/อนุมัติ', 9.5)
-  checkbox(pdf, PAGE_W / 2 + 5, y + 12, false, 'อื่นๆ ................................................................', 9.5)
+  checkbox(pdf, PAGE_W / 2 - 35, y + 7, true, 'ทราบ/อนุมัติ', 9.5)
+  checkbox(pdf, PAGE_W / 2 + 5, y + 7, false, 'อื่นๆ ................................................................', 9.5)
 
   pdf.setFont('Sarabun', 'normal')
   pdf.setFontSize(9)
-  centerTextAt(pdf, 'ลงชื่อ................................................................................ ผู้อำนวยการ', PAGE_W / 2, y + 20)
-  centerTextAt(pdf, 'ผู้อำนวยการวิทยาลัยเทคนิคเลย', PAGE_W / 2, y + 24.5)
+  centerTextAt(pdf, 'ลงชื่อ................................................................................ ผู้อำนวยการ', PAGE_W / 2, y + 15)
+  centerTextAt(pdf, `( ${director} )`, PAGE_W / 2, y + 19.5)
+  centerTextAt(pdf, 'ผู้อำนวยการวิทยาลัยเทคนิคเลย', PAGE_W / 2, y + 24)
 }
 
 // ════════════════════════════════════════════
@@ -356,6 +359,10 @@ async function drawAppendixPage(pdf, logData, sectionsInPage, appendixImages) {
   const imgBoxH = 60
 
   for (const block of sectionsInPage.blocks) {
+    const images = block.images || []
+    const hasAnyImage = images.some(img => img && img.url)
+    if (!hasAnyImage) continue // ไม่มีรูป → ไม่แสดงหัวข้อและกรอบของ section นี้เลย
+
     pdf.setFont('Sarabun', 'bold')
     pdf.setFontSize(10)
     pdf.text(block.heading, MARGIN_L, y)
@@ -363,31 +370,27 @@ async function drawAppendixPage(pdf, logData, sectionsInPage, appendixImages) {
     pdf.line(MARGIN_L, y + 0.7, MARGIN_L + pdf.getTextWidth(block.heading), y + 0.7)
     y += 5
 
-    const images = block.images || []
     for (let col = 0; col < 2; col++) {
       const img = images[col]
+      if (!img || !img.url) continue // ไม่มีรูปในช่องนี้ → ข้ามกรอบไปเลย
       const x = MARGIN_L + col * (imgBoxW + 6)
       pdf.setDrawColor(180, 180, 180)
       pdf.setLineWidth(0.2)
       pdf.rect(x, y, imgBoxW, imgBoxH)
 
-      if (img && img.url) {
-        try {
-          const imgData = await loadImageAsDataURL(img.url)
-          if (imgData) {
-            pdf.addImage(imgData, 'JPEG', x + 1, y + 1, imgBoxW - 2, imgBoxH - 2)
-          }
-        } catch (e) {
-          drawNoImagePlaceholder(pdf, x, y, imgBoxW, imgBoxH)
+      try {
+        const imgData = await loadImageAsDataURL(img.url)
+        if (imgData) {
+          pdf.addImage(imgData, 'JPEG', x + 1, y + 1, imgBoxW - 2, imgBoxH - 2)
         }
-      } else {
+      } catch (e) {
         drawNoImagePlaceholder(pdf, x, y, imgBoxW, imgBoxH)
       }
 
       // คำอธิบายใต้รูป
       pdf.setFont('Sarabun', 'normal')
       pdf.setFontSize(8.5)
-      const desc = (img && img.desc) ? img.desc : '-'
+      const desc = img.desc ? img.desc : '-'
       centerTextAt(pdf, desc, x + imgBoxW / 2, y + imgBoxH + 4)
     }
     y += imgBoxH + 10
@@ -464,7 +467,7 @@ function labeledTextBox(pdf, label, value, x, y) {
 // ════════════════════════════════════════════
 // MAIN EXPORT FUNCTION
 // ════════════════════════════════════════════
-export async function buildLogPDF({ logData, methodsData, resultsData, appendixImages }) {
+export async function buildLogPDF({ logData, methodsData, resultsData, appendixImages, systemSettings }) {
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
   setupFonts(pdf)
 
@@ -477,7 +480,7 @@ export async function buildLogPDF({ logData, methodsData, resultsData, appendixI
 
   // หน้า 3
   newPage(pdf)
-  drawPage3(pdf)
+  drawPage3(pdf, logData, systemSettings)
 
   // หน้า 4 — คั่นภาคผนวก
   newPage(pdf)

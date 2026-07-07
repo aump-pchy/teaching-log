@@ -43,8 +43,8 @@
         </h2>
         
         <div class="header-inline-group">
-          <span>ครูผู้สอน <input type="text" v-model="logData.teacher_name" :disabled="!isEditing" class="dotted-input w-250" /></span>
-          <span>แผนกวิชา <input type="text" v-model="logData.department" :disabled="!isEditing" class="dotted-input w-220" /></span>
+          <span>ครูผู้สอน <input type="text" :value="logData.teacher_name" disabled class="dotted-input w-250" /></span>
+          <span>แผนกวิชา <input type="text" :value="logData.department" disabled class="dotted-input w-220" /></span>
         </div>
         
         <div class="header-inline-group mt-6">
@@ -68,7 +68,6 @@
           <tr>
             <th colspan="3" class="w-45p">วัน/เวลาดำเนินการจัดการเรียนรู้</th>
             <th colspan="3" class="w-35p">จำนวนนักเรียน นักศึกษา</th>
-            <th rowspan="2" class="w-20p">ปัญหาและข้อเสนอแนะ</th>
           </tr>
           <tr>
             <th class="w-15p">วันที่สอน</th>
@@ -87,7 +86,7 @@
             <td><input type="text" v-model="row.total" :disabled="!isEditing" class="table-cell-input text-center" /></td>
             <td><input type="text" v-model="row.present" :disabled="!isEditing" class="table-cell-input text-center" /></td>
             <td><input type="text" v-model="row.percentage" :disabled="!isEditing" class="table-cell-input text-center" /></td>
-            <td><input type="text" v-model="row.remark" :disabled="!isEditing" class="table-cell-input" /></td>
+
           </tr>
         </tbody>
       </table>
@@ -281,10 +280,10 @@
         </div>
       </div>
       <div class="appendix-content-body mt-15">
-        <div class="appendix-item-block">
+        <div class="appendix-item-block" v-if="appendixImages.section1.some(i => i.url)">
           <h4 class="evidence-title-head">1. รูปแบบการจัดการเรียนรู้</h4>
           <div class="image-double-grid mt-6">
-            <div class="photo-card-box" v-for="(img, i) in appendixImages.section1" :key="i">
+            <div class="photo-card-box" v-for="(img, i) in appendixImages.section1.filter(i => i.url)" :key="i">
               <div class="mock-image-view">
                 <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
                 <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
@@ -293,10 +292,10 @@
             </div>
           </div>
         </div>
-        <div class="appendix-item-block mt-15">
+        <div class="appendix-item-block mt-15" v-if="appendixImages.section2.some(i => i.url)">
           <h4 class="evidence-title-head">2. วิธีการให้เนื้อหา</h4>
           <div class="image-double-grid mt-6">
-            <div class="photo-card-box" v-for="(img, i) in appendixImages.section2" :key="i">
+            <div class="photo-card-box" v-for="(img, i) in appendixImages.section2.filter(i => i.url)" :key="i">
               <div class="mock-image-view">
                 <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
                 <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
@@ -313,10 +312,10 @@
         <h2 class="appendix-main-header">หลักฐานการจัดการเรียนรู้ วิชาในสถานประกอบการ (ต่อ)</h2>
       </div>
       <div class="appendix-content-body mt-15">
-        <div class="appendix-item-block">
+        <div class="appendix-item-block" v-if="appendixImages.section3.some(i => i.url)">
           <h4 class="evidence-title-head">3. สื่อที่ใช้/แหล่งเรียนรู้</h4>
           <div class="image-double-grid mt-6">
-            <div class="photo-card-box" v-for="(img, i) in appendixImages.section3" :key="i">
+            <div class="photo-card-box" v-for="(img, i) in appendixImages.section3.filter(i => i.url)" :key="i">
               <div class="mock-image-view">
                 <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
                 <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
@@ -325,10 +324,10 @@
             </div>
           </div>
         </div>
-        <div class="appendix-item-block mt-15">
+        <div class="appendix-item-block mt-15" v-if="appendixImages.section4_5.some(i => i.url)">
           <h4 class="evidence-title-head">4. โปรแกรม/แอปพลิเคชัน และ 5. การวัดผล</h4>
           <div class="image-double-grid mt-6">
-            <div class="photo-card-box" v-for="(img, i) in appendixImages.section4_5" :key="i">
+            <div class="photo-card-box" v-for="(img, i) in appendixImages.section4_5.filter(i => i.url)" :key="i">
               <div class="mock-image-view">
                 <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
                 <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
@@ -503,6 +502,9 @@ function mapApiToRefs(data) {
     week:           String(data.week || ''),
     date_from_full: formatFullDate(startParsed),
     date_to_full:   formatFullDate(endParsed),
+    start_date:     startParsed.day,
+    month:          startParsed.month,
+    year:           startParsed.year,
     subject_name:   data.subject_name   || '',
     subject_code:   data.subject_code   || '',
     topic:          data.topic          || '',
@@ -701,7 +703,8 @@ console.log(logData.value)
     logData: logData.value,
     methodsData: methodsData.value,
     resultsData: resultsData.value,
-    appendixImages: appendixImages.value
+    appendixImages: appendixImages.value,
+    systemSettings: systemSettings.value
   })
 
   const blob = pdf.output('blob')
