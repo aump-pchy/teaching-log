@@ -83,15 +83,22 @@ const authStore = useAuthStore()
 const isOpen = ref(false)        // mobile drawer
 const isCollapsed = ref(false)   // desktop collapse
 
-const menuItems = [
-  { to: '/logs',      icon: 'ti-list',      label: 'บันทึกการสอน' },
-  { to: '/logs/new',  icon: 'ti-plus',      label: 'เพิ่มบันทึกใหม่' },
-]
+const menuItems = computed(() => {
+  const items = [
+    { to: '/logs',     icon: 'ti-list', label: 'บันทึกการสอน' },
+    { to: '/logs/new', icon: 'ti-plus', label: 'เพิ่มบันทึกใหม่' },
+  ]
+  // teacher เห็นเมนูดูข้อมูลตัวเอง
+  if (authStore.user?.role !== 'admin') {
+    items.push({ to: '/admin/users', icon: 'ti-user', label: 'ข้อมูลของฉัน' })
+  }
+  return items
+})
 
 const adminMenuItems = [
-  { to: '/admin/users',   icon: 'ti-users',          label: 'จัดการผู้ใช้' },
-  { to: '/departments',   icon: 'ti-building',        label: 'จัดการแผนกวิชา' },
-  { to: '/admin/config',  icon: 'ti-settings',        label: 'จัดการข้อมูลพื้นฐาน' },
+  { to: '/admin/users',   icon: 'ti-users',    label: 'จัดการผู้ใช้' },
+  { to: '/departments',   icon: 'ti-building', label: 'จัดการแผนกวิชา' },
+  { to: '/admin/config',  icon: 'ti-settings', label: 'จัดการข้อมูลพื้นฐาน' },
 ]
 
 const userInitial = computed(() => {

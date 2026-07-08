@@ -2,15 +2,17 @@
   <div class="user-management-container">
     <div class="page-header">
       <div>
-        <h1 class="page-title">จัดการข้อมูลผู้ใช้งาน</h1>
-        <p class="page-subtitle">จัดการรายชื่ออาจารย์ เจ้าหน้าที่ และสิทธิ์การใช้งานในระบบบันทึกการสอน</p>
+        <h1 class="page-title">{{ isAdmin ? 'จัดการข้อมูลผู้ใช้งาน' : 'ข้อมูลบัญชีของฉัน' }}</h1>
+        <p class="page-subtitle">
+          {{ isAdmin ? 'จัดการรายชื่อครูผู้สอน เจ้าหน้าที่ และสิทธิ์การใช้งานในระบบบันทึกการสอน' : 'ดูและแก้ไขข้อมูลส่วนตัวของคุณ' }}
+        </p>
       </div>
-      <button @click="openAddModal" class="btn btn-primary">
+      <button v-if="isAdmin" @click="openAddModal" class="btn btn-primary">
         <i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้งานใหม่
       </button>
     </div>
 
-    <div class="filter-card">
+    <div v-if="isAdmin" class="filter-card">
       <div class="search-box">
         <i class="fa-solid fa-magnifying-glass search-icon"></i>
         <input 
@@ -64,39 +66,43 @@
             </td>
             <td>
               <span :class="['badge', user.role === 'admin' ? 'badge-admin' : 'badge-teacher']">
-                {{ user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'อาจารย์' }}
+                {{ user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ครูผู้สอน' }}
               </span>
             </td>
             <td>
               <div class="action-buttons">
-                <button 
-                  v-if="!user.is_approved" 
-                  @click="handleApprove(user)" 
-                  class="btn-icon btn-approve" 
-                  title="อนุมัติการใช้งาน"
-                >
-                  <i class="fa-solid fa-user-check"></i>
-                </button>
-                <span v-else class="approved-status-badge" title="อนุมัติการใช้งานเรียบร้อยแล้ว">
-                  <i class="fa-solid fa-circle-check"></i>
-                </span>
+                <template v-if="isAdmin">
+                  <button 
+                    v-if="!user.is_approved" 
+                    @click="handleApprove(user)" 
+                    class="btn-icon btn-approve" 
+                    title="อนุมัติการใช้งาน"
+                  >
+                    <i class="fa-solid fa-user-check"></i>
+                  </button>
+                  <span v-else class="approved-status-badge" title="อนุมัติการใช้งานเรียบร้อยแล้ว">
+                    <i class="fa-solid fa-circle-check"></i>
+                  </span>
 
-                <button @click="openEditModal(user)" class="btn-icon btn-edit" title="แก้ไขข้อมูล">
-                  <i class="fa-solid fa-user-pen"></i>
-                </button>
-                
-                <button 
-                  @click="handleResetPassword(user)" 
-                  class="btn-icon btn-reset" 
-                  :class="{ 'btn-disabled': !isAdminCheck }"
-                  :disabled="!isAdminCheck"
-                  :title="isAdminCheck ? 'รีเซ็ตรหัสผ่าน' : 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่จัดการได้'"
-                >
-                  <i class="fa-solid fa-key"></i>
-                </button>
+                  <button @click="openEditModal(user)" class="btn-icon btn-edit" title="แก้ไขข้อมูล">
+                    <i class="fa-solid fa-user-pen"></i>
+                  </button>
+                  
+                  <button 
+                    @click="handleResetPassword(user)" 
+                    class="btn-icon btn-reset" 
+                    title="รีเซ็ตรหัสผ่าน"
+                  >
+                    <i class="fa-solid fa-key"></i>
+                  </button>
 
-                <button @click="deleteUser(user.id)" class="btn-icon btn-delete" title="ลบผู้ใช้งาน">
-                  <i class="fa-solid fa-trash-can"></i>
+                  <button @click="deleteUser(user.id)" class="btn-icon btn-delete" title="ลบผู้ใช้งาน">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </template>
+
+                <button v-else @click="openEditModal(user)" class="btn-icon btn-edit" title="แก้ไขข้อมูลของฉัน">
+                  <i class="fa-solid fa-user-pen"></i> แก้ไขข้อมูล
                 </button>
               </div>
             </td>
@@ -112,7 +118,7 @@
       <div class="modal-card">
         <div class="modal-header">
           <h3>
-            {{ modal.isResetPassword ? '🔒 รีเซ็ตรหัสผ่านใหม่' : (modal.isEdit ? '📝 แก้ไขข้อมูลผู้ใช้งาน' : '➕ เพิ่มผู้ใช้งานใหม่') }}
+            {{ modal.isResetPassword ? '🔒 รีเซ็ตรหัสผ่านใหม่' : (modal.isEdit ? '📝 แก้ไขข้อมูล' : '➕ เพิ่มผู้ใช้งานใหม่') }}
           </h3>
           <button @click="closeModal" class="btn-close">&times;</button>
         </div>
@@ -148,7 +154,11 @@
                 <label>รหัสผ่านแรกเริ่ม</label>
                 <input v-model="form.password" type="password" class="form-control" required placeholder="กำหนดรหัสผ่านแรกเริ่ม">
               </div>
-              <div class="form-group">
+              <div class="form-group" v-if="modal.isEdit">
+                <label>รหัสผ่านใหม่ (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)</label>
+                <input v-model="form.password" type="password" class="form-control" placeholder="อย่างน้อย 6 ตัวอักษร">
+              </div>
+              <div class="form-group" v-if="isAdmin">
                 <label>แผนกวิชา</label>
                 <select v-model="form.department_id" class="form-control" required>
                   <option value="">เลือกแผนกวิชา</option>
@@ -157,10 +167,10 @@
                   </option>
                 </select>
               </div>
-              <div class="form-group">
+              <div class="form-group" v-if="isAdmin">
                 <label>สิทธิ์การใช้งาน (Role)</label>
                 <select v-model="form.role" class="form-control" required>
-                  <option value="teacher">Teacher (อาจารย์ผู้สอน)</option>
+                  <option value="teacher">Teacher (ครูผู้สอน)</option>
                   <option value="admin">Admin (ผู้ดูแลระบบ)</option>
                 </select>
               </div>
@@ -213,14 +223,9 @@ const form = reactive({
   role: 'teacher'
 })
 
-// ดักจับเช็คสิทธิ์ผู้ดูแลระบบแบบปลอดภัย ป้องกันโค้ดพังเวลา Store ยังไม่ถูก Initialize
-const isAdminCheck = computed(() => {
-  if (!authStore) return false
-  const userObj = authStore.user?.value || authStore.user
-  return userObj?.role === 'admin' || authStore.isAdmin === true
-})
+const currentUser = computed(() => authStore.user?.value || authStore.user)
+const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
-// ดักจับแปลงค่าแผนกวิชาให้เป็น Array เสมอ ป้องกันอาการ Object ซ้อนพังหน้าเว็บ
 const departmentsList = computed(() => {
   if (!departments.value) return []
   if (Array.isArray(departments.value)) return departments.value
@@ -228,11 +233,13 @@ const departmentsList = computed(() => {
   return []
 })
 
-// ตัวกรองผู้ใช้งานที่มีระบบ Safety Check ป้องกันข้อมูลว่างในจังหวะแรก
 const filteredUsers = computed(() => {
   const rawUsers = users.value?.data || users.value
   if (!Array.isArray(rawUsers)) return []
-  
+
+  // ครูเห็นแค่ของตัวเอง ไม่ต้องกรองอะไรเพิ่ม
+  if (!isAdmin.value) return rawUsers.filter(u => u)
+
   return rawUsers.filter(user => {
     if (!user) return false
     const matchSearch = !filters.search || 
@@ -263,27 +270,24 @@ const fetchDepartments = async () => {
 const fetchUsers = async () => {
   loading.value = true
   try {
-    // 🎯 1. ไปดึง Token ล่าสุดจาก LocalStorage หรือ AuthStore มาเตรียมไว้
     const token = localStorage.getItem('token')
+    const endpoint = isAdmin.value
+      ? `${API_URL}/users`
+      : `${API_URL}/users/${currentUser.value?.id}`
 
-    // 🎯 2. ยิงหาหลังบ้านโดยแนบ Authorization Header ไปส่งบัตรผ่านประตูด้วย
-    const res = await axios.get(`${API_URL}/users`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+    const res = await axios.get(endpoint, {
+      headers: { Authorization: `Bearer ${token}` }
     })
-    
-    // บันทึกข้อมูลจริงจาก Supabase (6 คน) ลงตัวแปร
-    users.value = res.data
+
+    users.value = isAdmin.value ? res.data : [res.data]
   } catch (err) {
     console.error('ดึงข้อมูลผู้ใช้ล้มเหลวจริง ๆ:', err)
-    
-    // 🎯 3. สั่งเคลียร์ค่าว่างเมื่อระบบพัง เพื่อให้อ้ายรู้ตัวทันทีว่าหลังบ้านหรือระบบ Token กำลังมีปัญหา
     users.value = [] 
   } finally {
     loading.value = false
   }
 }
+
 const getDepartmentName = (user) => {
   if (user.departments?.name) return user.departments.name
   if (user.department?.name) return user.department.name
@@ -325,10 +329,6 @@ const closeModal = () => {
 }
 
 const handleResetPassword = async (user) => {
-  if (!isAdminCheck.value) {
-    return alert('สิทธิ์ของอ้ายไม่สามารถรีเซ็ตรหัสผ่านได้! ฟังก์ชันนี้กดได้เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นครับ ❌')
-  }
-
   modal.isEdit = false
   modal.isResetPassword = true
   modal.currentUserId = user.id
@@ -343,7 +343,7 @@ const handleResetPassword = async (user) => {
 }
 
 const saveUser = async () => {
-  if (form.password && form.password.trim().length < 6 && (modal.isResetPassword || !modal.isEdit)) {
+  if (form.password && form.password.trim().length > 0 && form.password.trim().length < 6) {
     return alert('รหัสผ่านความปลอดภัยต้องมีความยาว 6 ตัวอักษรขึ้นไปนะ !')
   }
 
@@ -359,13 +359,19 @@ const saveUser = async () => {
       })
       alert(`🎉 สำเร็จ! ทำการเปลี่ยนและรีเซ็ตรหัสผ่านใหม่ของ ${form.full_name} เรียบร้อยแล้วครับ!`)
     } else if (modal.isEdit) {
-      await axios.put(`${API_URL}/users/${modal.currentUserId}`, {
-        full_name: form.full_name,
-        email: form.email,
-        department_id: Number(form.department_id),
-        role: form.role
-      })
-      alert('อัปเดตข้อมูลผู้ใช้งานสำเร็จ!')
+      const payload = { full_name: form.full_name, email: form.email }
+
+      if (isAdmin.value) {
+        payload.department_id = Number(form.department_id)
+        payload.role = form.role
+      }
+      // ทั้ง admin และ teacher ส่ง password ได้ถ้ากรอกไว้
+      if (form.password && form.password.trim() !== '') {
+        payload.password = form.password
+      }
+
+      await axios.put(`${API_URL}/users/${modal.currentUserId}`, payload)
+      alert('อัปเดตข้อมูลสำเร็จ!')
     } else {
       await axios.post(`${API_URL}/users`, {
         ...form,
@@ -380,8 +386,8 @@ const saveUser = async () => {
     const errorMsg = err.response?.data?.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาเช็กเซิร์ฟเวอร์หลังบ้าน'
     alert(`เกิดข้อผิดพลาด: ${errorMsg}`)
   } finally {
-  modal.saving = false
-}
+    modal.saving = false
+  }
 }
 
 const handleApprove = async (user) => {
@@ -402,8 +408,7 @@ const handleApprove = async (user) => {
 }
 
 const deleteUser = async (id) => {
-  const currentUser = authStore.user?.value || authStore.user
-  if (currentUser && currentUser.id === id) {
+  if (currentUser.value && currentUser.value.id === id) {
     return alert('จะลบบัญชี Admin ที่กำลังใช้งานอยู่ตอนนี้ไม่ได้นะ! 😂')
   }
 
@@ -636,15 +641,7 @@ const deleteUser = async (id) => {
   background-color: #F3E8FF;
   color: #7C3AED;
 }
-.btn-reset:hover:not(:disabled) { background-color: #7C3AED; color: white; }
-
-.btn-disabled {
-  background-color: #F3F4F6 !important;
-  color: #9CA3AF !important;
-  cursor: not-allowed !important;
-  transform: none !important;
-  box-shadow: none !important;
-}
+.btn-reset:hover { background-color: #7C3AED; color: white; }
 
 .btn-delete {
   background-color: #FEE2E2;
