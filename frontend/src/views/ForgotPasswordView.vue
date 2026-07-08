@@ -6,7 +6,7 @@
         <span>Teaching Log</span>
       </div>
       
-      <h2>ลืมรหัสผ่านใช่ไหมอ้าย?</h2>
+      <h2>ลืมรหัสผ่านใช่ไหม</h2>
       <p class="subtitle">กรอกอีเมลที่ใช้อยู่ในระบบ ระบบจะรีเซ็ตรหัสผ่านให้เป็นรหัสตั้งต้นทันทีครับ</p>
 
       <form @submit.prevent="handleSubmit" class="forgot-form">

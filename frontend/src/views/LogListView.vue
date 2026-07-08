@@ -164,31 +164,16 @@ import axios from 'axios'
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()
 
-// 🟢 [แก้จุดเอ๋อแวบ] บังคับให้โหลดค้างไว้เป็น true ตั้งแต่เกิด!
-const isLoading = ref(true) 
-const userRole = ref(localStorage.getItem('role') || 'teacher') 
-const currentTeacherName = ref(localStorage.getItem('full_name') || '')
+const selectedSemester = ref('1/2569')
+const isOpen = ref(false)
+const departments = ["IT", "AI", "EE", "ME"]
+const selectedDept = ref("")
+const searchQuery = ref('')
+
 const currentUserId = ref(null)
 
-const searchQuery = ref('')
-const selectedSemester = ref('') 
-const selectedDepartment = ref('') 
-// 🟢 [เพิ่มใหม่] ลำดับการแสดงผล: 'desc' = ล่าสุดก่อน (ค่าเริ่มต้น), 'asc' = เก่าสุดก่อน
-const sortOrder = ref('desc')
-
-const rawLogs = ref([])
-const termOptions = ref([])  
-const departments = ref([])  
-
-// ฟังก์ชันดักเช็กและแนบ Token (ป้องกัน 401 Unauthorized ขาดลอย)
-const getAuthHeader = () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    console.error('❌ ไม่พบโทเค็นในระบบ กรุณาล็อกอินใหม่')
-    return {}
-  }
-  return { Authorization: `Bearer ${token}` }
-}
+// ใช้ VITE_API_URL จาก .env (ตอน build ผ่าน Docker จะถูกกำหนดเป็น /api ให้ผ่าน nginx proxy)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token')
@@ -207,8 +192,17 @@ const getUserIdFromToken = () => {
 
 const fetchSystemSettings = async () => {
   try {
-    const response = await axios.get(`${API_BASE}/system/settings`, { headers: getAuthHeader() })
-    console.log('⚙️ โหลดเซ็ตติ้งสำเร็จ')
+    const url = selectedDept.value 
+      ? `${API_URL}/logs?dept=${selectedDept.value}` 
+      : `${API_URL}/logs`
+      
+    const token = localStorage.getItem('token') 
+    
+    const response = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    
+    rawLogs.value = response.data
   } catch (error) {
     console.error('โหลดข้อมูลระบบกลางไม่สำเร็จ:', error)
   }
@@ -294,17 +288,24 @@ onMounted(async () => {
   await Promise.all([fetchSystemSettings(), fetchDepartments(), fetchLogs()])
 })
 
-// สมองกลคัดกรองตาราง ทำงานเรียลไทม์ไม่มีดีเลย์
+watch(selectedDept, () => {
+  fetchLogs()
+})
+
+watch(selectedSemester, () => {
+  fetchLogs()
+})
+
 const filteredLogs = computed(() => {
   let result = [...rawLogs.value]
   
-  if (userRole.value !== 'admin') {
-    if (currentTeacherName.value) {
-      result = result.filter(log => log.teacher_name === currentTeacherName.value)
+  if (userRole !== 'admin') {
+    if (currentTeacherName) {
+      result = result.filter(log => log.teacher_name === currentTeacherName)
     }
   }
   
-  if (selectedDepartment.value) {
+  if (selectedSemester.value) {
     result = result.filter(log => {
       const logDept = log.department_name || log.department || ''
       return logDept.toLowerCase().includes(selectedDepartment.value.toLowerCase().trim())
@@ -346,63 +347,49 @@ const viewDetail = (id) => {
 </script>
 
 <style scoped>
-/* 🟢 จัดแต่งฟอนต์สารบรรณเด่นๆ หนาอ่านง่ายสบายตา */
-.app-container, .app-container *,
-table, tr, th, td, input, select, button {
-  font-family: 'Sarabun', 'Inter', sans-serif !important;
+
+.app-container, 
+.app-container *,
+table, 
+tr, 
+th, 
+td, 
+input, 
+select, 
+button {
+  font-family: 'Sarabun', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+.custom-select-wrapper {
+  overflow: hidden;
+  box-shadow: -3px 5px 10px rgba(0, 0, 0, 0.16), -1px 3px 6px rgba(0, 0, 0, 0.1) !important;
+  transition: all 0.2s ease-in-out;
+}
+.custom-select-wrapper:hover {
+  box-shadow: -4px 7px 14px rgba(0, 0, 0, 0.2), -2px 4px 8px rgba(0, 0, 0, 0.12) !important;
 }
 
-:global(html) {
-  overflow-y: scroll !important;
-}
-
-.custom-styled-table {
-  table-layout: fixed; 
-  width: 100% !important;
-}
-
-/* 🎨 ไล่ระดับเฉดสีหัวตาราง Gradient สวยหรูหราทรงคุณค่า */
-.custom-thead {
-  background: linear-gradient(135deg, #1e7e34 0%, #145623 100%) !important;
-}
-
-.custom-thead th {
-  font-size: 14px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.5px;
-}
-
-/* 🎨 ฟอร์แมตสลับแถวทางม้าลาย */
-.table-row-item:nth-child(odd) {
+.project-select-box option {
+  font-family: 'Sarabun', sans-serif !important;
   background-color: #ffffff !important;
-}
-.table-row-item:nth-child(even) {
-  background-color: #f5fcf8 !important; 
-}
-.table-row-item:hover {
-  background-color: #e4f5ea !important; 
+  color: #334155 !important;
+  padding: 12px 16px !important;
+  border-radius: 12px !important; 
 }
 
+select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 🌀 แอนิเมชันลูกเล่นขยับหมุนตัวโหลด */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.btn-detail {
+  font-weight: 600 !important;
 }
-.animate-spin {
-  animation: spin 0.8s linear infinite !important;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .4; }
-}
-.animate-pulse {
-  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+html, body {
+  overflow-y: scroll !important;
 }
 </style>

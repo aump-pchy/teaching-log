@@ -1,22 +1,33 @@
 const express = require('express')
 const router = express.Router()
+<<<<<<< HEAD
 const bcrypt = require('bcrypt') 
 const supabase = require('../db/supabase') 
 const { authMiddleware } = require('../middleware/auth')
 // 🎯 1. เพิ่ม , register เข้ามาดึงฟังก์ชันสมัครสมาชิกจาก Controller มาใช้งาน
 const { login, logout, register } = require('../controllers/authController')
+=======
+const { login, register, logout, forgotPassword } = require('../controllers/authController')
+>>>>>>> origin/feature/auth-users
 
 // POST /api/auth/login
 router.post('/login', login)
 
+<<<<<<< HEAD
 // POST /api/auth/logout
 router.post('/logout', authMiddleware, logout)
 
 // 🎯 2. เพิ่มเส้นทางนี้เข้าไปเพื่อให้หน้าบ้านยิงมาสมัครสมาชิกได้สำเร็จ!
+=======
+>>>>>>> origin/feature/auth-users
 // POST /api/auth/register
 router.post('/register', register)
 
+// POST /api/auth/logout
+router.post('/logout', logout)
+
 // POST /api/auth/forgot-password
+<<<<<<< HEAD
 // 🎯 [แก้ไขทั้งหมด] เดิมเขียนรหัสผ่านลงคอลัมน์ "password" ซึ่งไม่มีอยู่จริง (ของจริงคือ password_hash)
 // และไม่เคยไปอัปเดตรหัสผ่านที่ฝั่ง Supabase Auth เลย ทำให้รีเซ็ตแล้ว login ด้วยรหัสใหม่ไม่ได้
 // ตอนนี้แก้ให้: หา auth_id ของ user -> อัปเดตรหัสผ่านจริงที่ Supabase Auth -> แล้วค่อย sync ตาราง users
@@ -83,5 +94,8 @@ router.post('/forgot-password', async (req, res) => {
     return res.status(500).json({ error: 'เซิร์ฟเวอร์หลังบ้านเกิดข้อผิดพลาดในการประมวลผล' });
   }
 });
+=======
+router.post('/forgot-password', forgotPassword)
+>>>>>>> origin/feature/auth-users
 
 module.exports = router

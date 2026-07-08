@@ -149,29 +149,28 @@ const newSemester = ref({
   academic_year: ''
 })
 
-const historyList = ref([])
+// ใช้ VITE_API_URL จาก .env (ตอน build ผ่าน Docker จะถูกกำหนดเป็น /api ให้ผ่าน nginx proxy)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-const getAuthHeader = () => {
-  const token = localStorage.getItem('token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-const fetchExecutives = async () => {
+// 1. ดึงข้อมูลล่าสุดผ่าน API ของหลังบ้านเราเอง
+const fetchCurrentSettings = async () => {
   try {
-    const response = await axios.get(`${API_BASE}/system/settings/executives`, { headers: getAuthHeader() })
-    if (response.data && response.data.data) {
-      executives.value = response.data.data
+    const response = await axios.get(`${API_URL}/system/settings`)
+    if (response.data) {
+      formData.value = response.data
     }
   } catch (error) {
     console.error(error)
   }
 }
 
-const fetchTermHistory = async () => {
+// 2. เซฟข้อมูลยิงผ่านหลังบ้าน Node.js เอาไปบันทึกลง Postgres อีกทอดหนึ่ง
+const handleSave = async () => {
+  isSubmitting.value = true
   try {
-    const response = await axios.get(`${API_BASE}/system/settings/terms`, { headers: getAuthHeader() })
-    if (response.data && response.data.data) {
-      historyList.value = response.data.data
+    const response = await axios.post(`${API_URL}/system/settings`, formData.value)
+    if (response.data.success) {
+      alert('บันทึกข้อมูลระบบกลางขึ้นฐานข้อมูลสำเร็จ')
     }
   } catch (error) {
     console.error(error)

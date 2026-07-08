@@ -10,7 +10,7 @@ const routes = [
   // 🔑 🛠️ เพิ่มหน้าลืมรหัสผ่าน (ForgotPassword) ตรงนี้เลยครับอ้าย!
   { path: '/forgot-password', component: () => import('../views/ForgotPasswordView.vue') },
 
-  { path: '/admin/users', component: () => import('../views/UserManageView.vue'), meta: { requiresAuth: true, adminOnly: true } },
+  { path: '/admin/users', component: () => import('../views/UserManageView.vue'), meta: { requiresAuth: true } },
 
   // 🎯 ดักจับลิงก์เก่า: ถ้าหลุดมาที่ /user-management ให้ดีดส่งต่อไปหน้าปัจจุบันทันที ไม่ค้างจอขาว
   { path: '/user-management', redirect: '/admin/users' },

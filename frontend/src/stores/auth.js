@@ -38,7 +38,7 @@ export const useAuthStore = defineStore('auth', () => {
     return data.user
   }
 
-  // 🟢 เปิดใช้งานระบบ Logout ให้สามารถล้างค่าในเครื่องได้จริงเวลาอาจารย์ใช้งานเสร็จ
+  // 🟢 เปิดใช้งานระบบ Logout ให้สามารถล้างค่าในเครื่องได้จริงเวลาครูผู้สอนใช้งานเสร็จ
   function logout() {
     token.value = null
     user.value  = null

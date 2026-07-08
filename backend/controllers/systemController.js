@@ -1,39 +1,26 @@
-// backend/controllers/systemController.js
-const supabase = require('../db/supabase')
+const pool = require('../db/pool')
 
-// ==========================================
-// ZONEที่ 1: จัดการรายนามผู้บริหารปัจจุบัน (ตาราง system_settings)
-// ==========================================
-
-// 📥 ดึงข้อมูลรายนามผู้บริหารปัจจุบัน (GET /api/system/settings/executives)
-exports.getExecutives = async (req, res) => {
+exports.getSettings = async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('system_settings')
-      .select('head_curriculum, deputy_academic, director')
-      .eq('id', 1)
-      .single()
-
-    if (error) throw error
-    return res.json({ success: true, data: data })
+    const result = await pool.query('SELECT * FROM system_settings WHERE id = 1')
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'ไม่พบข้อมูลระบบกลาง' })
+    }
+    return res.json(result.rows[0])
   } catch (error) {
     console.error('Error fetching executives:', error)
     return res.status(500).json({ message: 'ดึงข้อมูลผู้บริหารล้มเหลว' })
   }
 }
 
-// 💾 อัปเดตรายนามผู้บริหารปัจจุบัน (POST /api/system/settings/executives)
-exports.updateExecutives = async (req, res) => {
-  const { head_curriculum, deputy_academic, director } = req.body
+exports.updateSettings = async (req, res) => {
+  const { term, academic_year, head_curriculum, deputy_academic, director } = req.body
   try {
-    const { data, error } = await supabase
-      .from('system_settings')
-      .update({ head_curriculum, deputy_academic, director })
-      .eq('id', 1)
-      .select()
-
-    if (error) throw error
-    return res.json({ success: true, message: 'อัปเดตข้อมูลผู้บริหารสำเร็จ' })
+    await pool.query(
+      `UPDATE system_settings SET term=$1, academic_year=$2, head_curriculum=$3, deputy_academic=$4, director=$5 WHERE id = 1`,
+      [term, academic_year, head_curriculum, deputy_academic, director]
+    )
+    return res.json({ success: true, message: 'บันทึกข้อมูลสำเร็จ' })
   } catch (error) {
     console.error('Error updating executives:', error)
     return res.status(500).json({ message: 'บันทึกข้อมูลผู้บริหารล้มเหลว' })
