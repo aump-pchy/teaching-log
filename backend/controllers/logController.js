@@ -328,7 +328,22 @@ async function uploadImage(req, res) {
       return res.status(400).json({ error: 'File is required' })
     }
 
-    const { caption, section } = req.body
+    const { caption, section, sections } = req.body
+    // 🎯 รองรับทั้งแบบเก่า (section เดี่ยว) และแบบใหม่ (sections หลายค่า ส่งมาเป็น JSON array string)
+    let sectionList = []
+    if (sections) {
+      try {
+        sectionList = JSON.parse(sections)
+      } catch {
+        sectionList = [sections]
+      }
+    } else if (section) {
+      sectionList = [section]
+    }
+    if (!Array.isArray(sectionList) || sectionList.length === 0) {
+      sectionList = ['other']
+    }
+    console.log('🔍 uploadImage received sectionList:', JSON.stringify(sectionList))
     const logResult = await supabase
       .from('teaching_logs')
       .select('id, user_id')
@@ -368,17 +383,19 @@ async function uploadImage(req, res) {
       sortOrder = sortOrderResult.data.length
     }
 
+    // 🎯 insert 1 แถวต่อ 1 หมวดที่เลือก (ใช้ไฟล์/storage_path เดียวกันทุกแถว)
+    const rowsToInsert = sectionList.map((sec, idx) => ({
+      log_id: logId,
+      storage_path: filePath,
+      caption: caption || '',
+      section: sec || 'other',
+      sort_order: sortOrder + idx
+    }))
+
     const { data, error: insertError } = await supabase
       .from('teaching_log_images')
-      .insert({
-        log_id: logId,
-        storage_path: filePath,
-        caption: caption || '',
-        section: section || 'other',
-        sort_order: sortOrder
-      })
+      .insert(rowsToInsert)
       .select('*')
-      .single()
 
     if (insertError) {
       return res.status(500).json({ error: insertError.message })
@@ -450,16 +467,30 @@ async function deleteImage(req, res) {
       return res.status(404).json({ error: 'ไม่พบรูปภาพหลักฐานที่ต้องการลบ' });
     }
 
-    // 2. สั่งลบไฟล์รูปภาพของจริงออกจากระบบ Supabase Storage Bucket
-    const { error: storageError } = await supabase.storage
-      .from('teaching-log-images')
-      .remove([imgRecord.storage_path]);
+    // 2. เช็คก่อนว่ามีแถวอื่นในตารางที่อ้างอิง storage_path เดียวกันอยู่ไหม
+    //    (เพราะรูปเดียวกันอาจถูกแท็กหลายหมวด เลยมีหลายแถวชี้ไปไฟล์เดียวกัน)
+    const { data: siblingRows, error: siblingError } = await supabase
+      .from('teaching_log_images')
+      .select('id')
+      .eq('storage_path', imgRecord.storage_path)
+      .neq('id', imgId);
 
-    if (storageError) {
-      return res.status(400).json({ error: 'ไม่สามารถลบไฟล์จากระบบจัดเก็บรูปภาพได้: ' + storageError.message });
+    if (siblingError) {
+      return res.status(400).json({ error: 'ตรวจสอบข้อมูลรูปภาพซ้ำไม่สำเร็จ: ' + siblingError.message });
     }
 
-    // 3. ลบ Record ประวัติข้อมูลรูปภาพนี้ออกจากตาราง
+    // 3. ลบไฟล์จริงออกจาก Storage เฉพาะกรณีที่ไม่มีแถวอื่นใช้ไฟล์นี้ร่วมอยู่แล้วเท่านั้น
+    if (!siblingRows || siblingRows.length === 0) {
+      const { error: storageError } = await supabase.storage
+        .from('teaching-log-images')
+        .remove([imgRecord.storage_path]);
+
+      if (storageError) {
+        return res.status(400).json({ error: 'ไม่สามารถลบไฟล์จากระบบจัดเก็บรูปภาพได้: ' + storageError.message });
+      }
+    }
+
+    // 4. ลบ Record ประวัติข้อมูลรูปภาพนี้ออกจากตาราง
     const { error: dbDeleteError } = await supabase
       .from('teaching_log_images')
       .delete()

@@ -17,17 +17,20 @@ async function authMiddleware(req, res, next) {
       return res.status(401).json({ error: 'ยังไม่ได้ login หรือ token หมดอายุ' })
     }
 
-    // 🎯 ไปดึงข้อมูลเพิ่มเติม (เช่น role, full_name) จากตารางฐานข้อมูล users มาพ่วงเก็บไว้
+    // 🎯 ไปดึงข้อมูลเพิ่มเติม (เช่น id, role, full_name) จากตารางฐานข้อมูล users มาพ่วงเก็บไว้
     const { data: dbUser } = await supabase
       .from('users')
-      .select('role, full_name, email')
+      .select('id, role, full_name, email')
       .eq('email', user.email)
       .maybeSingle()
 
     // ฝังข้อมูลลงใน req.user เพื่อส่งไม้ต่อให้ฟังก์ชันถัดไปใช้งาน
     req.user = {
-      id: user.id,
+      id: dbUser?.id,          // 🎯 ใช้ id (integer) จากตาราง users แทน UUID ของ Supabase Auth
+                                //    เพื่อให้ตรงกับ user_id (integer) ในตาราง teaching_logs
+      authId: user.id,         // uuid ของ Supabase Auth เก็บไว้เผื่อจุดอื่นต้องใช้
       email: user.email,
+      full_name: dbUser?.full_name || '',
       role: dbUser?.role || 'teacher' // ถ้าหาบทบาทในตารางไม่เจอ ให้เป็นอาจารย์ธรรมดาไว้ก่อน
     }
 

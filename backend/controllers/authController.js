@@ -137,8 +137,32 @@ async function logout(req, res) {
   }
 }
 
+/**
+ * GET /api/auth/me
+ * ต้องผ่าน authMiddleware มาก่อน (req.user จะมีค่าพร้อมใช้)
+ * ใช้ดึงข้อมูลผู้ใช้ปัจจุบัน เช่น เอาไปเติมชื่อ-สกุลอัตโนมัติในฟอร์มบันทึกการสอน
+ */
+async function getMe(req, res) {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'ยังไม่ได้ login หรือ token หมดอายุ' })
+    }
+
+    return res.status(200).json({
+      id: req.user.id,
+      email: req.user.email,
+      full_name: req.user.full_name,
+      role: req.user.role
+    })
+  } catch (err) {
+    console.error('GetMe Error:', err)
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์หลังบ้าน' })
+  }
+}
+
 module.exports = {
   register,
   login,
-  logout
+  logout,
+  getMe
 }
