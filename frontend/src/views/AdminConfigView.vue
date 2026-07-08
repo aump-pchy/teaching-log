@@ -114,7 +114,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios' //  ใช้ axios ยิงเข้าหลังบ้าน Node.js ของเราเอง ชัวร์สุดปลอดภัยสุด
+import axios from 'axios'
+
+// ดึง URL หลังบ้านจากระบบแวดล้อม ถ้าไม่มีให้ถอยกลับไปใช้ localhost (ซัพพอร์ต Docker 100%)
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 const formData = ref({
   term: '1',
@@ -126,26 +129,32 @@ const formData = ref({
 
 const isSubmitting = ref(false)
 
-//  1. ดึงข้อมูลล่าสุดผ่าน API ของหลังบ้านเราเอง
+// 1. ดึงข้อมูลล่าสุดผ่าน API หลังบ้าน
 const fetchCurrentSettings = async () => {
   try {
-    // ปรับ Port ตัวเลขหลัง localhost ให้ตรงกับเซิร์ฟเวอร์หลังบ้าน Node.js ของหนูน้า (เช่น 3000 หรือ 5000)
-    const response = await axios.get('http://localhost:3000/api/system/settings')
+    const response = await axios.get(`${API_BASE}/api/system/settings`)
+    // ดักจับ: ถ้าหลังบ้านส่งข้อมูลมาเป็นอาร์เรย์หรือออบเจกต์ ให้หยิบตัวล่าสุดมาโชว์
     if (response.data) {
-      formData.value = response.data
+      formData.value = Array.isArray(response.data) ? response.data[0] : response.data
     }
   } catch (error) {
     console.error('ดึงข้อมูลตั้งค่ากลางไม่สำเร็จ:', error)
   }
 }
 
-//  2. เซฟข้อมูลยิงผ่านหลังบ้าน Node.js เอาไปบันทึกลง Supabase อีกทอดหนึ่ง
+// 2. เซฟข้อมูล (อย่าลืมบอกเพื่อนหลังบ้านนะว่าให้ใช้คำสั่ง INSERT เพิ่มแถวใหม่เพื่อไม่ให้ทับเทอมเก่า)
 const handleSave = async () => {
+  if (!formData.value.academic_year || !formData.value.head_curriculum) {
+    alert('กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึก')
+    return
+  }
+
   isSubmitting.value = true
   try {
-    const response = await axios.post('http://localhost:3000/api/system/settings', formData.value)
-    if (response.data.success) {
-      alert('บันทึกข้อมูลระบบกลางขึ้นฐานข้อมูลสำเร็จ')
+    const response = await axios.post(`${API_BASE}/api/system/settings`, formData.value)
+    if (response.data.success || response.status === 200 || response.status === 201) {
+      alert('💾 บันทึกข้อมูลระบบกลางสำเร็จแล้ว')
+      fetchCurrentSettings() // ดึงค่าใหม่อีกรอบเพื่อความชัวร์
     }
   } catch (error) {
     console.error('บันทึกข้อมูลล้มเหลว:', error)
