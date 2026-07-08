@@ -28,25 +28,50 @@
           v-model="selectedDepartment"
           class="border border-slate-200 rounded-xl py-2 px-3 text-xs bg-white outline-none focus:border-[#1e7e34] font-bold text-slate-600 cursor-pointer"
         >
-          <option value="">🏢 ทั้งหมดทุกแผนกวิชา</option>
-          <option v-for="dept in departments" :key="dept.id || dept.name" :value="dept.name">
+          <option value="" style="color:#334155; background-color:#ffffff;">🏢 ทั้งหมดทุกแผนกวิชา</option>
+          <option 
+            v-for="dept in departments" 
+            :key="dept.id || dept.name" 
+            :value="dept.name"
+            style="color:#334155; background-color:#ffffff;"
+          >
             {{ dept.name }}
           </option>
         </select>
       </div>
     </div>
 
-    <div class="flex items-center justify-start">
+    <div class="flex flex-wrap items-center justify-start gap-2.5">
+      <!-- 🟢 [แก้ไข] เดิม <select> ได้ class text-white ทำให้ตัวเลือกในลิสต์ (dropdown popup)
+           ที่ browser render เป็นพื้นขาวปกติ ตัวหนังสือขาวเลยกลืนมองไม่เห็น
+           แก้โดยกำหนดสีตัวหนังสือ/พื้นหลังของแต่ละ <option> ตรงๆ ด้วย inline style -->
       <select 
         v-model="selectedSemester"
         class="bg-gradient-to-r from-[#1e7e34] to-[#145623] text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-md hover:opacity-95 transition-all outline-none cursor-pointer border-none"
       >
-        <option value="">📌 แสดงทุกภาคเรียน</option>
-        <option v-for="term in termOptions" :key="term" :value="term">
+        <option value="" style="color:#1e293b; background-color:#ffffff;">📌 แสดงทุกภาคเรียน</option>
+        <option 
+          v-for="term in termOptions" 
+          :key="term" 
+          :value="term"
+          style="color:#1e293b; background-color:#ffffff;"
+        >
           ภาคเรียนที่ {{ term }}
         </option>
       </select>
+
+      <!-- 🟢 [เพิ่มใหม่] ปุ่มสลับลำดับ ล่าสุด↔เก่าสุด ไม่ต้องเลื่อนหาเอง -->
+      <button
+        type="button"
+        @click="toggleSortOrder"
+        class="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm hover:border-[#1e7e34] hover:text-[#1e7e34] transition-all cursor-pointer"
+        :title="sortOrder === 'desc' ? 'กำลังเรียง: ล่าสุด → เก่าสุด' : 'กำลังเรียง: เก่าสุด → ล่าสุด'"
+      >
+        <span>{{ sortOrder === 'desc' ? '⬇️' : '⬆️' }}</span>
+        <span>{{ sortOrder === 'desc' ? 'ล่าสุด → เก่าสุด' : 'เก่าสุด → ล่าสุด' }}</span>
+      </button>
     </div>
+
 
     <div v-if="isLoading" class="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm">
       <div class="relative flex items-center justify-center w-14 h-14">
@@ -148,6 +173,8 @@ const currentUserId = ref(null)
 const searchQuery = ref('')
 const selectedSemester = ref('') 
 const selectedDepartment = ref('') 
+// 🟢 [เพิ่มใหม่] ลำดับการแสดงผล: 'desc' = ล่าสุดก่อน (ค่าเริ่มต้น), 'asc' = เก่าสุดก่อน
+const sortOrder = ref('desc')
 
 const rawLogs = ref([])
 const termOptions = ref([])  
@@ -187,6 +214,22 @@ const fetchSystemSettings = async () => {
   }
 }
 
+// 🟢 [แก้ไข] ดึงรายชื่อภาคเรียนทั้งหมดจากประวัติภาคเรียนกลาง (academic_terms) ด้วย
+// ไม่ใช่พึ่งพาแค่ภาคเรียนที่ปรากฏในบันทึกที่มีอยู่แล้วอย่างเดียว เพราะภาคเรียนที่เพิ่งเปิดใหม่
+// อาจยังไม่มีบันทึกการสอนของใครเลยสักรายการ ตัวเลือกจะไม่โผล่ถ้าอิงจาก log เท่านั้น
+const fetchTermHistory = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/system/settings/terms`, { headers: getAuthHeader() })
+    if (response.data && Array.isArray(response.data.data)) {
+      return response.data.data.map(t => `${t.term}/${t.academic_year}`)
+    }
+    return []
+  } catch (error) {
+    console.error('โหลดประวัติภาคเรียนไม่สำเร็จ:', error)
+    return []
+  }
+}
+
 // 📥 ดึงข้อมูลตารางพร้อมเคลียร์ทางม้าลายและลิสต์ภาคเรียน
 const fetchLogs = async () => {
   try {
@@ -194,10 +237,14 @@ const fetchLogs = async () => {
     rawLogs.value = response.data
 
     // 🟢 [แก้ไขภาคเรียนจาง/หาย] ดึงเฉพาะเลขเทอมล้วนๆ ออกมาทำ List ตัวเลือกไม่ให้พังซ้ำซ้อน
-    const terms = rawLogs.value.map(log => {
+    const termsFromLogs = rawLogs.value.map(log => {
       return log.semester || log.term || ''
     })
-    termOptions.value = [...new Set(terms)].filter(Boolean).sort((a, b) => a - b)
+    const termsFromHistory = await fetchTermHistory()
+
+    termOptions.value = [...new Set([...termsFromLogs, ...termsFromHistory])]
+      .filter(Boolean)
+      .sort()
     
   } catch (error) {
     console.error('ดึงข้อมูลรายการสอนไม่สำเร็จ:', error)
@@ -278,9 +325,19 @@ const filteredLogs = computed(() => {
              (log.subject_name || '').toLowerCase().includes(query)
     })
   }
-  
+
+  // 🟢 [เพิ่มใหม่] เรียงลำดับตาม id (บันทึกใหม่กว่า = id มากกว่า) ตามปุ่มที่ผู้ใช้เลือก
+  result.sort((a, b) => {
+    const diff = (a.id || 0) - (b.id || 0)
+    return sortOrder.value === 'desc' ? -diff : diff
+  })
+
   return result
 })
+
+const toggleSortOrder = () => {
+  sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
+}
 
 const viewDetail = (id) => {
   if (!id) return

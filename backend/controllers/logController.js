@@ -7,72 +7,73 @@ const supabase = require('../db/supabase')
  */
 async function getAllLogs(req, res) {
   try {
-    // 1. พิมพ์ปลอมตัวตนเป็นแอดมินไว้ตรงนี้เลยค่ะ (หรือจะเปลี่ยนเป็น 'teacher' ก็ได้น้า)
-    //const userId = 3; 
-    //const userRole = 'admin'; // เปลี่ยนเป็น 'admin' เพื่อทดสอบสิทธิ์แอดมิน
-
-    // 2. เปิดใช้งานตัวแปรแกะ Token จริงที่ผูกไว้กับ authMiddleware คืนมา:
     const { id: userId, role: userRole } = req.user;
-    
-    // ดึงค่า query ตัวกรองรหัสแผนก เช่น ?dept=IT, ?dept=EE
     const { dept } = req.query; 
 
-   // 2. ดึงข้อมูลตาราง teaching_logs พร้อม Join ตาราง users และ departments
-    let query = supabase
-      .from('teaching_logs')
-      .select(`
-        *,
-        users!inner (
-          id,
-          full_name,
-          department_id,
-          departments!inner (
-            id,
-            code,
-            name
-          )
-        )
-      `);
+    // 🟢 [แก้ไข] ดึง teaching_logs แบบเปล่าๆ ก่อน ไม่ทำ nested embed (users!inner -> departments!inner)
+    // เพราะ Supabase/PostgREST จะโยน error "more than one relationship was found" หรือ join พังได้
+    // ถ้า schema มีความสัมพันธ์ซ้อนกันหลายทาง ทำให้ endpoint นี้ 500 แบบสุ่ม
+    let query = supabase.from('teaching_logs').select('*');
 
-    // 3. เงื่อนไขสำหรับคุณครู (Teacher) -> เห็นเฉพาะงานตัวเอง
     if (userRole === 'teacher') {
       query = query.eq('user_id', userId);
     }
 
-    // 4. ปลดล็อกระบบกรองของแอดมินให้ฉลาดและตรงกับดาต้าเบส
-    if (userRole === 'admin' && dept) {
-      // ตรวจสอบว่าถ้าหน้าบ้านส่งค่ามาเป็นตัวเลข (เช่น 1, 2, 3) ให้กรองผ่าน department_id ตรงๆ
-      if (!isNaN(dept)) {
-        query = query.eq('users.department_id', parseInt(dept));
-      } else {
-        query = query.filter('users.departments.code', 'eq', dept);
-      }
-    }
-    // 5. สั่งให้คำสั่งทำงานดึงข้อมูลจริงจาก Supabase
     const { data: logs, error } = await query;
 
     if (error) {
       throw error;
     }
 
-    // 6. แปลงร่างข้อมูล (Formatting) ให้อยู่ในโครงสร้างที่หน้าบ้าน Vue 3 พร้อมใช้งานได้ทันที
-    const formattedLogs = logs.map(log => ({
-      id: log.id,
-      week: log.week,
-      subject_code: log.subject_code,
-      subject_name: log.subject_name,
-      // ดึงฟิลด์ full_name จากตาราง users
-      teacher_name: log.users ? log.users.full_name : 'ไม่ระบุชื่อครู',
-      // ดึงฟิลด์ name จากตาราง departments
-      department_name: (log.users && log.users.departments) ? log.users.departments.name : 'ไม่ระบุแผนกวิชา'
-    }));
+    // 🟢 ดึงข้อมูลครู + แผนกวิชา แยกอีกก้อนหนึ่ง แล้วค่อยเอามาต่อกันฝั่ง JS (ปลอดภัยกว่า embed)
+    const userIds = [...new Set((logs || []).map(l => l.user_id).filter(Boolean))];
+    let usersMap = {};
 
-    // 7. ส่ง Array ข้อมูลกลับสำเร็จเป็น JSON
+    if (userIds.length > 0) {
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, full_name, department_id, departments ( id, code, name )')
+        .in('id', userIds);
+
+      if (usersError) {
+        throw usersError;
+      }
+
+      usersMap = Object.fromEntries((users || []).map(u => [u.id, u]));
+    }
+
+    let formattedLogs = (logs || []).map(log => {
+      const user = usersMap[log.user_id];
+      const department = user ? user.departments : null;
+
+      return {
+        id: log.id,
+        week: log.week,
+        subject_code: log.subject_code,
+        subject_name: log.subject_name,
+        // 🟢 [แก้ไข] เดิม endpoint นี้ไม่ส่ง semester/term กลับไปเลย
+        // ทำให้หน้าบ้าน (LogListView) หาค่า log.semester ไม่เจอ -> ตัวเลือกภาคเรียนว่างเปล่าตลอด
+        semester: log.semester,
+        term: log.term,
+        teacher_name: user ? user.full_name : 'ไม่ระบุชื่อครู',
+        department_name: department ? department.name : 'ไม่ระบุแผนกวิชา',
+        department_code: department ? department.code : null,
+        department_id: user ? user.department_id : null
+      };
+    });
+
+    if (userRole === 'admin' && dept) {
+      if (!isNaN(dept)) {
+        formattedLogs = formattedLogs.filter(l => String(l.department_id) === String(dept));
+      } else {
+        formattedLogs = formattedLogs.filter(l => l.department_code === dept);
+      }
+    }
+
     return res.status(200).json(formattedLogs);
 
   } catch (error) {
     console.error('Error in getAllLogs:', error);
-    // ส่ง Error Format ตามสัญญากลุ่ม
     return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการบันทึกการสอน' });
   }
 }
@@ -85,32 +86,27 @@ async function getLogById(req, res) {
     const { id } = req.params;
     const { id: userId, role } = req.user;
 
-    // 1. ดึงข้อมูล teaching_log พร้อมดึงชื่อผู้สอน (users) และชื่อแผนก (departments)
     const { data: log, error: logError } = await supabase
-  .from('teaching_logs')
-  .select(`
-    *,
-    users (
-      full_name,
-      department_id,
-      departments ( name, headerName )
-    )
-  `)
-  .eq('id', id)
-  .single()
+      .from('teaching_logs')
+      .select(`
+        *,
+        users (
+          full_name,
+          department_id,
+          departments ( name, headerName )
+        )
+      `)
+      .eq('id', id)
+      .single()
 
-    // 2. ถ้าไม่เจอ Log ให้ส่ง 404 กลับไป
     if (logError || !log) {
       return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนนี้' });
     }
 
-    // 3. ตรวจสอบสิทธิ์ (Permission Check): ถ้าเป็น teacher ต้องเป็นเจ้าของ log เท่านั้น
     if (role === 'teacher' && log.user_id !== userId) {
       return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึงบันทึกการสอนของผู้อื่น' });
     }
 
-    // 4. ดึงข้อมูลรูปภาพที่ผูกกับ Log นี้ (จากฟังก์ชัน getImages ด้านล่างมาประกอบ)
-    // หมายเหตุ: เพื่อความง่ายและจบใน Endpoint เดียว สามารถดึงรูปแบบมี Signed URL ไปพร้อมกันได้เลย
     const { data: images, error: imgError } = await supabase
       .from('teaching_log_images')
       .select('*')
@@ -119,7 +115,6 @@ async function getLogById(req, res) {
 
     let imagesWithUrls = [];
     if (!imgError && images) {
-      // สร้าง Signed URL ให้แต่ละรูปภาพ (อายุลิงก์ 1 ชั่วโมง)
       imagesWithUrls = await Promise.all(
         images.map(async (img) => {
           const { data: signData } = await supabase.storage
@@ -134,7 +129,6 @@ async function getLogById(req, res) {
       );
     }
 
-    // 5. ส่งข้อมูล Log พร้อมกับ Array ของรูปภาพกลับไปให้ Frontend
     return res.status(200).json({
       ...log,
       images: imagesWithUrls
@@ -147,14 +141,14 @@ async function getLogById(req, res) {
 
 /**
  * POST /api/logs
- * body: { week, date_from, date_to, subject_name, subject_code, topic,
- *         attendance, methods, content_methods, media, apps, evaluation,
- *         outcome_*, problem, solution }
+ * สร้างบันทึกใหม่ ดึงรายชื่อผู้บริหารชุดปัจจุบัน (Snapshot) มาฝังล็อกค้างไว้ใน Record ทันที
  */
+
 async function createLog(req, res) {
   try {
     const {
       semester, 
+      term, // 🟢 รองรับกรณีหน้าบ้านส่งชื่อตัวแปรนี้มาจ้า
       week,
       date_from,
       date_to,
@@ -176,12 +170,33 @@ async function createLog(req, res) {
     } = req.body
 
     if (!subject_name || !topic) {
-      return res.status(400).json({ error: 'subject_name and topic are required' })
+      return res.status(400).json({ error: 'จำเป็นต้องระบุชื่อวิชาและหัวข้อเรื่องที่สอน' })
     }
 
+    // 🟢 ดึงข้อมูลผู้บริหารและภาคเรียนปัจจุบันจากตารางระบบกลาง (id = 1)
+    const { data: adminConfig, error: configError } = await supabase
+      .from('system_settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+
+    if (configError) {
+      console.error('ไม่สามารถดึงข้อมูลจากระบบกลางได้:', configError);
+    }
+
+    // 🟢 คำนวณหาค่าภาคเรียนที่ถูกต้องที่สุด ถ้าหน้าบ้านส่งมาว่าง ให้ดึงจากระบบกลาง ถ้าไม่มีจริงๆ ให้ใช้ 1/2569 ตามใจลูกสาวเลยจ้า!
+    let finalSemester = semester || term;
+    if (!finalSemester && adminConfig) {
+      finalSemester = `${adminConfig.term}/${adminConfig.academic_year}`;
+    }
+    if (!finalSemester) {
+      finalSemester = '1/2569'; // 🟢 ล็อกเป็นปี 2569 เรียบร้อยแล้วค๊าาา
+    }
+
+    // ประกอบก้อนข้อมูลนำส่ง Supabase
     const payload = {
       user_id: req.user.id,
-      semester: semester || '1/2567',
+      semester: finalSemester, // 🟢 ใช้ภาคเรียนที่เป็นปี 2569 มุ่งตรงสู่ฐานข้อมูล
       week: Number(week) || 1,
       date_from: date_from || '',
       date_to: date_to || '',
@@ -199,17 +214,24 @@ async function createLog(req, res) {
       outcome_affective: outcome_affective || '',
       outcome_application: outcome_application || '',
       problem: problem || '',
-      solution: solution || ''
+      solution: solution || '',
+      
+      // 🟢 แปลงค่าเป็น String ป้องกันฐานข้อมูลเออเร่อ
+      head_curriculum: (adminConfig && adminConfig.head_curriculum) ? String(adminConfig.head_curriculum) : null,
+      deputy_academic: (adminConfig && adminConfig.deputy_academic) ? String(adminConfig.deputy_academic) : null,
+      director: (adminConfig && adminConfig.director) ? String(adminConfig.director) : null
     }
 
-    const { data, error } = await supabase
+    // 🟢 สั่งบันทึกลงตารางหลัก
+    const { data, error: insertError } = await supabase
       .from('teaching_logs')
       .insert(payload)
       .select('*')
       .single()
 
-    if (error) {
-      return res.status(500).json({ error: error.message })
+    if (insertError) {
+      console.error("❌ Supabase ปฏิเสธการบันทึกเนื่องจาก:", insertError.message, insertError.details);
+      return res.status(500).json({ error: insertError.message })
     }
 
     return res.status(201).json(data)
@@ -226,9 +248,8 @@ async function updateLog(req, res) {
   try {
     const { id } = req.params;
     const { id: userId, role } = req.user;
-    const updateData = req.body; // รับฟิลด์ที่จะแก้ไขมาจาก Frontend
+    const updateData = req.body; 
 
-    // 1. หาข้อมูล Log เดิมเพื่อเช็กสิทธิ์ก่อน
     const { data: log, error: findError } = await supabase
       .from('teaching_logs')
       .select('user_id')
@@ -239,12 +260,10 @@ async function updateLog(req, res) {
       return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนที่ต้องการแก้ไข' });
     }
 
-    // 2. ตรวจสอบสิทธิ์: ถ้าเป็น teacher ต้องแก้เฉพาะ log ของตัวเองเท่านั้น
     if (role === 'teacher' && log.user_id !== userId) {
       return res.status(403).json({ error: 'ไม่มีสิทธิ์แก้ไขบันทึกการสอนของผู้อื่น' });
     }
 
-    // 3. สั่งอัปเดตข้อมูลใน Supabase
     const { data: updatedLog, error: updateError } = await supabase
       .from('teaching_logs')
       .update(updateData)
@@ -256,13 +275,13 @@ async function updateLog(req, res) {
       return res.status(400).json({ error: 'ไม่สามารถอัปเดตข้อมูลได้: ' + updateError.message });
     }
 
-    // 4. ส่งข้อมูลชิ้นที่อัปเดตแล้วกลับไป
     return res.status(200).json(updatedLog);
 
   } catch (error) {
     return res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
+
 /**
  * DELETE /api/logs/:id
  */
@@ -271,7 +290,6 @@ async function deleteLog(req, res) {
     const { id } = req.params;
     const { id: userId, role } = req.user;
 
-    // 1. หา Log เดิมเพื่อเช็กสิทธิ์ก่อนลบ
     const { data: log, error: findError } = await supabase
       .from('teaching_logs')
       .select('user_id')
@@ -282,12 +300,10 @@ async function deleteLog(req, res) {
       return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนที่ต้องการลบ' });
     }
 
-    // 2. ตรวจสอบสิทธิ์: teacher ลบได้เฉพาะของตัวเอง ส่วน admin ลบได้ทุกคนตาม Matrix
     if (role === 'teacher' && log.user_id !== userId) {
       return res.status(403).json({ error: 'ไม่มีสิทธิ์ลบบันทึกการสอนของผู้อื่น' });
     }
 
-    // **เพิ่มเติม** ดึงรายการรูปเพื่อลบไฟล์จริงใน Storage ก่อนลบ Record (ป้องกันไฟล์ขยะค้างในระบบ Cloud)
     const { data: images } = await supabase
       .from('teaching_log_images')
       .select('storage_path')
@@ -298,7 +314,6 @@ async function deleteLog(req, res) {
       await supabase.storage.from('teaching-log-images').remove(pathsToDelete);
     }
 
-    // 3. สั่งลบข้อมูลออกจากตาราง (ตารางรูปภาพย่อยจะถูกลบอัตโนมัติด้วย On Delete Cascade บนฐานข้อมูล)
     const { error: deleteError } = await supabase
       .from('teaching_logs')
       .delete()
@@ -308,7 +323,6 @@ async function deleteLog(req, res) {
       return res.status(400).json({ error: 'ไม่สามารถลบข้อมูลได้: ' + deleteError.message });
     }
 
-    // 4. ส่งข้อความยืนยันความสำเร็จ
     return res.status(200).json({ message: 'Log deleted' });
 
   } catch (error) {
@@ -318,8 +332,6 @@ async function deleteLog(req, res) {
 
 /**
  * POST /api/logs/:id/images
- * multipart/form-data: file (image), caption, section
- * บังคับอย่างน้อย 1 รูปก่อน submit log
  */
 async function uploadImage(req, res) {
   try {
@@ -379,7 +391,7 @@ async function uploadImage(req, res) {
       })
       .select('*')
       .single()
-
+     
     if (insertError) {
       return res.status(500).json({ error: insertError.message })
     }
@@ -398,7 +410,6 @@ async function getImages(req, res) {
   try {
     const { id: log_id } = req.params;
 
-    // 1. ดึงรายการรูปภาพจากตาราง เรียงลำดับตาม sort_order
     const { data: images, error: imgError } = await supabase
       .from('teaching_log_images')
       .select('*')
@@ -409,12 +420,11 @@ async function getImages(req, res) {
       return res.status(400).json({ error: imgError.message });
     }
 
-    // 2. วนลูปเพื่อขอ Signed URL (ลิงก์ชั่วคราวในการเปิดเข้าดูรูปที่ถูกซ่อนเป็น Private)
     const imagesWithSignedUrls = await Promise.all(
       images.map(async (img) => {
         const { data: signData, error: signError } = await supabase.storage
           .from('teaching-log-images')
-          .createSignedUrl(img.storage_path, 60 * 60); // ลิงก์เปิดรูปใช้งานได้ 1 ชม.
+          .createSignedUrl(img.storage_path, 60 * 60);
 
         return {
           ...img,
@@ -423,7 +433,6 @@ async function getImages(req, res) {
       })
     );
 
-    // 3. ส่งข้อมูลชุดรูปภาพกลับไปให้ Frontend
     return res.status(200).json(imagesWithSignedUrls);
 
   } catch (error) {
@@ -438,7 +447,6 @@ async function deleteImage(req, res) {
   try {
     const { id: log_id, imgId } = req.params;
 
-    // 1. ค้นหา Record ของรูปภาพในตารางฐานข้อมูลก่อน
     const { data: imgRecord, error: findError } = await supabase
       .from('teaching_log_images')
       .select('*')
@@ -450,7 +458,6 @@ async function deleteImage(req, res) {
       return res.status(404).json({ error: 'ไม่พบรูปภาพหลักฐานที่ต้องการลบ' });
     }
 
-    // 2. สั่งลบไฟล์รูปภาพของจริงออกจากระบบ Supabase Storage Bucket
     const { error: storageError } = await supabase.storage
       .from('teaching-log-images')
       .remove([imgRecord.storage_path]);
@@ -459,7 +466,6 @@ async function deleteImage(req, res) {
       return res.status(400).json({ error: 'ไม่สามารถลบไฟล์จากระบบจัดเก็บรูปภาพได้: ' + storageError.message });
     }
 
-    // 3. ลบ Record ประวัติข้อมูลรูปภาพนี้ออกจากตาราง
     const { error: dbDeleteError } = await supabase
       .from('teaching_log_images')
       .delete()

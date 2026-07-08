@@ -1,114 +1,128 @@
 <template>
-  <div class="min-h-screen bg-[#f3f7f4] text-slate-700 p-8 font-sans tracking-wide antialiased">
+  <div class="max-w-4xl mx-auto my-8 font-sans space-y-8 select-none">
     
-    <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-[0_6px_25px_rgba(0,0,0,0.03)] border border-slate-200/60 overflow-hidden mt-6">
-      
-      <div class="bg-gradient-to-r from-[#0f543e] via-[#167053] to-[#1e7e34] p-8 text-white">
-        <div class="flex items-center gap-4">
-          <span class="text-4xl">⚙️</span>
-          <div>
-            <h1 class="text-2xl font-bold tracking-tight">ตั้งค่าข้อมูลระบบกลาง</h1>
-            <p class="text-sm text-emerald-100/80 font-medium mt-1.5">กำหนดภาคเรียน ปีการศึกษา และรายชื่อผู้บริหารสำหรับรายงาน</p>
-          </div>
-        </div>
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div class="bg-[#1e7e34] px-6 py-5">
+        <h2 class="text-xl font-bold text-white tracking-wide">ข้อมูลรายนามผู้บริหารปัจจุบัน</h2>
+        <p class="text-xs text-green-100/80 mt-1 font-medium">ขั้นตอนที่ 1 จาก 2 : กำหนดรายชื่อผู้บริหารสำหรับการลงนามในเอกสารปัจจุบัน</p>
       </div>
 
-      <form @submit.prevent="handleSave" class="p-8 space-y-6 text-base">
-        
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
-              📌 ภาคเรียนที่
-            </label>
-            <div class="grid grid-cols-3 gap-3">
-              <label v-for="t in ['1', '2', 'Summer']" :key="t" 
-                :class="[
-                  'text-center py-3.5 border rounded-xl font-bold text-sm cursor-pointer transition-all active:scale-95 flex items-center justify-center',
-                  formData.term === t 
-                    ? 'border-[#1e7e34] bg-[#eaf4ef] text-[#0f543e] shadow-sm' 
-                    : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
-                ]"
-              >
-                <input type="radio" v-model="formData.term" :value="t" class="hidden" />
-                {{ t }}
-              </label>
+      <div class="p-6 space-y-6">
+        <div class="bg-emerald-50/50 border border-emerald-200/60 rounded-xl px-4 py-3 text-sm text-emerald-800 font-medium">
+          ℹ️ กรุณาตรวจสอบการสะกดชื่อ-นามสกุล และตำแหน่งให้ถูกต้องก่อนดำเนินการบันทึกข้อมูล
+        </div>
+
+        <form @submit.prevent="saveExecutiveSettings" class="space-y-6 text-sm font-semibold text-slate-600">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="flex flex-col gap-2">
+              <label class="text-slate-500 font-bold">หัวหน้างานพัฒนาหลักสูตรฯ *</label>
+              <input 
+                type="text" 
+                v-model="executives.head_curriculum"
+                placeholder="ระบุชื่อ-นามสกุล หัวหน้างานฯ"
+                class="border border-slate-200 rounded-xl py-2.5 px-4 outline-none focus:border-[#1e7e34] font-medium text-slate-700 bg-white transition-all shadow-sm"
+              />
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label class="text-slate-500 font-bold">วิชาการสอน (รองผู้อำนวยการ) *</label>
+              <input 
+                type="text" 
+                v-model="executives.deputy_academic"
+                placeholder="ระบุชื่อ-นามสกุล รองผู้อำนวยการ"
+                class="border border-slate-200 rounded-xl py-2.5 px-4 outline-none focus:border-[#1e7e34] font-medium text-slate-700 bg-white transition-all shadow-sm"
+              />
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label class="text-slate-500 font-bold">ผู้อำนวยการวิทยาลัย *</label>
+              <input 
+                type="text" 
+                v-model="executives.director"
+                placeholder="ระบุชื่อ-นามสกุล ผู้อำนวยการ"
+                class="border border-slate-200 rounded-xl py-2.5 px-4 outline-none focus:border-[#1e7e34] font-medium text-slate-700 bg-white transition-all shadow-sm"
+              />
             </div>
           </div>
 
-          <div>
-            <label for="academic-year" class="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
-              📅 ปีการศึกษา
-            </label>
-            <input 
-              id="academic-year"
-              type="text" 
-              v-model="formData.academic_year" 
-              placeholder="เช่น 2569"
-              class="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-[#1e7e34] focus:border-[#1e7e34] p-3.5 font-semibold shadow-sm transition-all outline-none"
-              required
-            />
+          <div class="flex justify-end pt-2 border-t border-slate-100">
+            <button 
+              type="submit" 
+              :disabled="isSavingExec"
+              class="px-6 py-2.5 bg-[#1e7e34] text-white rounded-xl font-bold text-sm shadow-sm hover:bg-[#145623] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {{ isSavingExec ? 'กำลังบันทึก...' : 'อัปเดตข้อมูล' }}
+            </button>
           </div>
-        </div>
-
-        <hr class="border-slate-100 my-3" />
-
-        <div class="space-y-5">
-          <div>
-            <label for="head-curriculum" class="block text-sm font-bold text-slate-600 mb-2">
-              👤 หัวหน้างานพัฒนาหลักสูตร และจัดการเรียนรู้
-            </label>
-            <input 
-              id="head-curriculum"
-              type="text" 
-              v-model="formData.head_curriculum" 
-              placeholder="ระบุชื่อ-นามสกุล"
-              class="w-full bg-[#f8faf8] border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-[#1e7e34] focus:border-[#1e7e34] p-4 font-medium shadow-inner transition-all outline-none"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="deputy-academic" class="block text-sm font-bold text-slate-600 mb-2">
-              👤 รองผู้อำนวยการฝ่ายวิชาการ
-            </label>
-            <input 
-              id="deputy-academic"
-              type="text" 
-              v-model="formData.deputy_academic" 
-              placeholder="ระบุชื่อ-นามสกุล"
-              class="w-full bg-[#f8faf8] border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-[#1e7e34] focus:border-[#1e7e34] p-4 font-medium shadow-inner transition-all outline-none"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="director" class="block text-sm font-bold text-slate-600 mb-2">
-              👤 ผู้อำนวยการ
-            </label>
-            <input 
-              id="director"
-              type="text" 
-              v-model="formData.director" 
-              placeholder="ระบุชื่อ-นามสกุล"
-              class="w-full bg-[#f8faf8] border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-[#1e7e34] focus:border-[#1e7e34] p-4 font-medium shadow-inner transition-all outline-none"
-              required
-            />
-          </div>
-        </div>
-
-        <div class="pt-3">
-          <button 
-            type="submit" 
-            :disabled="isSubmitting"
-            class="w-full bg-gradient-to-r from-[#0f543e] to-[#1e7e34] text-white text-sm font-bold py-4 px-5 rounded-xl hover:brightness-110 shadow-md transition-all active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            <span v-if="isSubmitting">กำลังบันทึกข้อมูล...</span>
-            <span v-else>💾 SAVE DATA</span>
-          </button>
-        </div>
-
-      </form>
+        </form>
+      </div>
     </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div class="bg-[#1e7e34] px-6 py-5">
+        <h2 class="text-xl font-bold text-white tracking-wide">เปิดภาคเรียน / ปีการศึกษาใหม่</h2>
+        <p class="text-xs text-green-100/80 mt-1 font-medium">ขั้นตอนที่ 2 จาก 2 : เพิ่มข้อมูลภาคเรียนใหม่เข้าสู่ระบบฐานข้อมูลกลาง</p>
+      </div>
+
+      <div class="p-6 space-y-6">
+        <form @submit.prevent="addNewSemester" class="space-y-6 text-sm font-semibold text-slate-600">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="flex flex-col gap-2">
+              <label class="text-slate-500 font-bold">ภาคเรียน *</label>
+              <select 
+                v-model="newSemester.current_semester" 
+                class="border border-slate-200 rounded-xl py-2.5 px-3 bg-white outline-none focus:border-[#1e7e34] font-medium text-slate-700 cursor-pointer transition-all shadow-sm"
+              >
+                <option value="1">ภาคเรียนที่ 1</option>
+                <option value="2">ภาคเรียนที่ 2</option>
+                <option value="summer">ภาคเรียนฤดูร้อน (Summer)</option>
+              </select>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label class="text-slate-500 font-bold">ปีการศึกษา (พ.ศ.) *</label>
+              <input 
+                type="text" 
+                v-model="newSemester.academic_year" 
+                placeholder="เช่น 2570" 
+                class="border border-slate-200 rounded-xl py-2.5 px-4 outline-none focus:border-[#1e7e34] font-medium text-slate-700 bg-white transition-all shadow-sm" 
+              />
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-2 border-t border-slate-100">
+            <button 
+              type="submit" 
+              :disabled="isSavingTerm" 
+              class="px-6 py-2.5 bg-[#1e7e34] text-white rounded-xl font-bold text-sm shadow-sm hover:bg-[#145623] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {{ isSavingTerm ? 'กำลังบันทึก...' : 'บันทึกข้อมูลภาคเรียน' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-200/60">
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">รายชื่อภาคเรียนทั้งหมดในระบบปัจจุบัน</h3>
+      </div>
+      <div class="p-6 bg-slate-50/20">
+        <div class="flex flex-wrap gap-2.5">
+          <span 
+            v-for="(item, idx) in historyList" 
+            :key="idx" 
+            class="bg-white border border-slate-200 text-slate-600 font-medium px-4 py-2 rounded-xl text-xs shadow-sm hover:border-[#1e7e34] hover:text-[#1e7e34] transition-all cursor-default"
+          >
+            {{ item.term === 'summer' ? 'ภาคเรียนฤดูร้อน (Summer)' : `ภาคเรียนที่ ${item.term}` }} / ปีการศึกษา {{ item.academic_year }}
+          </span>
+          <span v-if="historyList.length === 0" class="text-xs font-medium text-slate-400 py-1">
+            ไม่มีข้อมูลภาคเรียนในระบบกลาง (กรุณากรอกข้อมูลเพื่อบันทึกขั้นถัดไป)
+          </span>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -116,63 +130,92 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-// ดึง URL หลังบ้านจากระบบแวดล้อม ถ้าไม่มีให้ถอยกลับไปใช้ localhost (ซัพพอร์ต Docker 100%)
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-const formData = ref({
-  term: '1',
-  academic_year: '2569',
+const isSavingExec = ref(false)
+const isSavingTerm = ref(false)
+
+const executives = ref({
   head_curriculum: '',
   deputy_academic: '',
   director: ''
 })
 
-const isSubmitting = ref(false)
+// 🟢 [แก้ไข] เดิม hardcode ปีการศึกษาเริ่มต้นเป็น '2569' ค้างไว้ตายตัว
+// ถ้าปีนี้ในระบบเลยไปแล้ว (เช่นตอนนี้เป็น 2570) พอกดบันทึกโดยไม่ได้แก้ค่า
+// จะชนกับข้อมูลเดิมที่เคยเพิ่มไปแล้วเสมอ แล้วโดนปฏิเสธว่า "มีในระบบแล้ว" (400) ทุกครั้ง
+const newSemester = ref({
+  current_semester: '1',
+  academic_year: ''
+})
 
-// 1. ดึงข้อมูลล่าสุดผ่าน API หลังบ้าน
-const fetchCurrentSettings = async () => {
+const historyList = ref([])
+
+const getAuthHeader = () => {
+  const token = localStorage.getItem('token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+const fetchExecutives = async () => {
   try {
-    const response = await axios.get(`${API_BASE}/api/system/settings`)
-    // ดักจับ: ถ้าหลังบ้านส่งข้อมูลมาเป็นอาร์เรย์หรือออบเจกต์ ให้หยิบตัวล่าสุดมาโชว์
-    if (response.data) {
-      formData.value = Array.isArray(response.data) ? response.data[0] : response.data
+    const response = await axios.get(`${API_BASE}/system/settings/executives`, { headers: getAuthHeader() })
+    if (response.data && response.data.data) {
+      executives.value = response.data.data
     }
   } catch (error) {
-    console.error('ดึงข้อมูลตั้งค่ากลางไม่สำเร็จ:', error)
+    console.error(error)
   }
 }
 
-// 2. เซฟข้อมูล (อย่าลืมบอกเพื่อนหลังบ้านนะว่าให้ใช้คำสั่ง INSERT เพิ่มแถวใหม่เพื่อไม่ให้ทับเทอมเก่า)
-const handleSave = async () => {
-  if (!formData.value.academic_year || !formData.value.head_curriculum) {
-    alert('กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึก')
-    return
-  }
-
-  isSubmitting.value = true
+const fetchTermHistory = async () => {
   try {
-    const response = await axios.post(`${API_BASE}/api/system/settings`, formData.value)
-    if (response.data.success || response.status === 200 || response.status === 201) {
-      alert('💾 บันทึกข้อมูลระบบกลางสำเร็จแล้ว')
-      fetchCurrentSettings() // ดึงค่าใหม่อีกรอบเพื่อความชัวร์
+    const response = await axios.get(`${API_BASE}/system/settings/terms`, { headers: getAuthHeader() })
+    if (response.data && response.data.data) {
+      historyList.value = response.data.data
     }
   } catch (error) {
-    console.error('บันทึกข้อมูลล้มเหลว:', error)
-    alert('เกิดข้อผิดพลาด กรุณาเช็กการเชื่อมต่อเซิร์ฟเวอร์หลังบ้าน')
+    console.error(error)
+  }
+}
+
+const saveExecutiveSettings = async () => {
+  try {
+    isSavingExec.value = true
+    const response = await axios.post(`${API_BASE}/system/settings/executives`, executives.value, { headers: getAuthHeader() })
+    if (response.status === 200 || response.data.success) {
+      alert('บันทึกอัปเดตข้อมูลผู้บริหารเรียบร้อยแล้วค่ะ')
+      await fetchExecutives()
+    }
+  } catch (error) {
+    alert('บันทึกข้อมูลผู้บริหารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง')
   } finally {
-    isSubmitting.value = false
+    isSavingExec.value = false
+  }
+}
+
+const addNewSemester = async () => {
+  try {
+    isSavingTerm.value = true
+    const response = await axios.post(`${API_BASE}/system/settings/terms`, newSemester.value, { headers: getAuthHeader() })
+    if (response.status === 200 || response.data.success) {
+      alert('บันทึกเปิดภาคเรียนใหม่สำเร็จแล้วค่ะ')
+      await fetchTermHistory()
+    }
+  } catch (error) {
+    alert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกภาคเรียนใหม่')
+  } finally {
+    isSavingTerm.value = false
   }
 }
 
 onMounted(() => {
-  fetchCurrentSettings()
+  fetchExecutives()
+  fetchTermHistory()
 })
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap');
-
-.font-sans {
-  font-family: 'Anuphan', 'Noto Sans Thai', sans-serif !important;
+* {
+  font-family: 'Sarabun', 'Inter', sans-serif !important;
 }
 </style>
