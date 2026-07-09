@@ -81,7 +81,17 @@
                 <FormField icon="fa-layer-group" label="ระดับชั้น / กลุ่ม">
                   <input v-model="form.level" class="form-input" placeholder="เช่น ปวช.2/1" />
                 </FormField>
-                
+                <FormField icon="fa-calendar-week" label="สัปดาห์ที่" required>
+                  <input v-model="form.week" type="number" min="1" class="form-input" placeholder="เช่น 1" />
+                </FormField>
+                <div></div>
+                <FormField icon="fa-calendar-day" label="ระหว่างวันที่" required>
+                  <input v-model="form.dateFrom" type="date" class="form-input" />
+                </FormField>
+                <FormField icon="fa-calendar-check" label="ถึงวันที่" required>
+                  <input v-model="form.dateTo" type="date" class="form-input" />
+                </FormField>
+
               </div>
 
             </div>
@@ -97,14 +107,13 @@
                   <table class="w-full text-xs">
                     <thead>
                       <tr class="bg-green-800 text-white">
-                        <th class="px-3 py-2.5 text-left rounded-tl-lg">คาบที่</th>
-                        <th class="px-3 py-2.5">วันที่สอน</th>
-                        <th class="px-3 py-2.5">ถึงวันที่สอน</th>
-                        <th class="px-3 py-2.5">เวลา</th>
+                        <th class="px-3 py-2.5 rounded-tl-lg">วันที่สอน</th>
+                        <th class="px-3 py-2.5">คาบที่</th>
+                        <th class="px-3 py-2.5">เวลาที่สอน</th>
                         <th class="px-3 py-2.5">ทั้งหมด</th>
-                        <th class="px-3 py-2.5">มาเรียน</th>
-                        <th class="px-3 py-2.5">ขาด</th>
-                        <th class="px-3 py-2.5 rounded-tr-lg">คะแนน</th>
+                        <th class="px-3 py-2.5">เข้าเรียน</th>
+                        <th class="px-3 py-2.5">ร้อยละ</th>
+                        <th class="px-2 py-2.5 rounded-tr-lg w-10"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -113,13 +122,10 @@
                         :key="i"
                         class="border-b border-gray-50 hover:bg-green-50/50 transition-colors"
                       >
-                        <td class="px-3 py-2 text-gray-500 font-medium">{{ i + 1 }}</td>
                         <td class="px-2 py-1.5">
                           <input type="date" v-model="row.date" class="table-input w-36" />
                         </td>
-                        <td class="px-2 py-1.5">
-                          <input type="date" v-model="row.date_to" class="table-input w-36" />
-                        </td>
+                        <td class="px-3 py-2 text-gray-500 font-medium text-center">{{ i + 1 }}</td>
                         <td class="px-2 py-1.5">
                           <input type="text" v-model="row.time" class="table-input w-28" placeholder="08:00-10:00" />
                         </td>
@@ -129,16 +135,25 @@
                         <td class="px-2 py-1.5">
                           <input type="number" v-model="row.present" class="table-input w-16 text-center" placeholder="0" />
                         </td>
-                        <td class="px-2 py-1.5">
-                          <input type="number" v-model="row.absent" class="table-input w-16 text-center" placeholder="0" />
+                        <td class="px-3 py-2 text-gray-500 font-medium text-center">
+                          {{ rowPercentage(row) }}
                         </td>
-                        <td class="px-2 py-1.5">
-                          <input type="number" v-model="row.score" class="table-input w-16 text-center" placeholder="0" />
+                        <td class="px-2 py-1.5 text-center">
+                          <button
+                            type="button"
+                            @click="removeRow(i)"
+                            class="w-6 h-6 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                          >
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                          </button>
                         </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
+                <button type="button" @click="addRow" class="btn-dashed">
+                  <i class="fa-solid fa-plus"></i> เพิ่มแถว
+                </button>
               </div>
 
               <div>
@@ -556,9 +571,11 @@ const IMAGE_CATEGORIES = [
 ]
 
 const form = reactive({
-  teacherName: '', subject: '', subjectCode: '', company: '', level: '', topic: '', logDate: '',
+  teacherName: '', subject: '', subjectCode: '', level: '',
+  week: '', dateFrom: '', dateTo: '',
+  topic: '',
   schedule: [
-    { date: '', date_to: '', time: '08:00-10:00', total: '', present: '', absent: '', score: '' },
+    { date: '', time: '08:00-10:00', total: '', present: '' },
   ],
   learningMethods: [], teachTechs: [], evalTypes: [],
   media: [], programs: [],
@@ -627,10 +644,18 @@ const OPTIONS = {
 // ── Methods ────────────────────────────────────────────────────────────────
 
 const addRow = () =>
-  form.schedule.push({ date: '', date_to: '', time: '08:00-10:00', total: '', present: '', absent: '', score: '' })
+  form.schedule.push({ date: '', time: '08:00-10:00', total: '', present: '' })
 
 const removeRow = (i) => {
   if (form.schedule.length > 1) form.schedule.splice(i, 1)
+}
+
+// คำนวณ "ร้อยละ" ของแต่ละแถวสำหรับแสดงผล (เข้าเรียน / ทั้งหมด x 100)
+const rowPercentage = (row) => {
+  const total = Number(row.total) || 0
+  const present = Number(row.present) || 0
+  if (!total) return '0'
+  return (Math.round((present / total) * 1000) / 10).toString()
 }
 
 const goStep = (n) => {
@@ -681,23 +706,25 @@ const submit = async () => {
 
   try {
     const payload = {
-      semester: '1/2567', 
-      week: 0,
-      date_from: form.schedule[0]?.date || '',
-      date_to: form.schedule[form.schedule.length - 1]?.date_to || '',
+      semester: '1/2569',
+      week: Number(form.week) || 0,
+      date_from: form.dateFrom || '',
+      date_to: form.dateTo || '',
       subject_name: form.subject,
       subject_code: form.subjectCode,
       topic: form.topic,
-      attendance: form.schedule.map((row) => ({
-        day: row.date || '',
-        day_to: row.date_to || '',
-        period: row.time || '',
-        time: row.time || '',
-        total: Number(row.total) || 0,
-        attended: Number(row.present) || 0,
-        pct: row.total ? Math.round(((Number(row.present) || 0) / Number(row.total)) * 1000) / 10 : 0,
-        issue: ''
-      })),
+      attendance: form.schedule.map((row, i) => {
+        const total = Number(row.total) || 0
+        const present = Number(row.present) || 0
+        return {
+          date: row.date || '',
+          period: String(i + 1),
+          time_range: row.time || '',
+          total,
+          present,
+          percentage: total ? Math.round((present / total) * 1000) / 10 : 0
+        }
+      }),
       methods: toBooleanObject(form.learningMethods, OPTIONS.methods, 'methods', form.otherDetails.methods),
       content_methods: toBooleanObject(form.teachTechs, OPTIONS.teachTechs, 'teachTechs', form.otherDetails.teachTechs),
       media: toBooleanObject(form.media, OPTIONS.mediaTypes, 'mediaTypes', form.otherDetails.media),
@@ -711,8 +738,8 @@ const submit = async () => {
       other_details: form.otherDetails 
     }
 
-    if (!form.subject.trim() || !form.topic.trim()) {
-      toastMessage.value = 'กรุณากรอกชื่อวิชาและหัวข้อก่อนบันทึก'
+    if (!form.subject.trim() || !form.topic.trim() || !form.week || !form.dateFrom || !form.dateTo) {
+      toastMessage.value = 'กรุณากรอกชื่อวิชา, สัปดาห์ที่, ระหว่างวันที่-ถึง และหัวข้อก่อนบันทึก'
       isSubmitting.value = false
       setTimeout(() => {
         toastMessage.value = ''
