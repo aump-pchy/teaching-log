@@ -179,7 +179,7 @@ const getUserIdFromToken = () => {
 const fetchSystemSettings = async () => {
   try {
     // ยิงไปดึงค่าคอนฟิกที่ตั้งจากหน้า Admin
-    const response = await axios.get('http://localhost:3000/api/system/settings')
+    const response = await axios.get(`${API_URL}/system/settings`)
     if (response.data) {
       const { term, academic_year } = response.data
       

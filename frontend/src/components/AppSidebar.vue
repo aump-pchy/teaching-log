@@ -56,6 +56,10 @@
         <button v-if="isCollapsed" class="collapse-btn desktop-only" @click="toggleCollapse" aria-label="ขยายเมนู">
           <i class="ti ti-layout-sidebar-left-expand"></i>
         </button>
+        <router-link to="/credits" class="nav-item credits-link" :title="isCollapsed ? 'ผู้จัดทำ' : ''" @click="closeMobile">
+          <i class="ti ti-users"></i>
+          <span v-if="!isCollapsed">ผู้จัดทำ</span>
+        </router-link>
         <button class="nav-item logout-btn" @click="handleLogout">
           <i class="ti ti-logout"></i>
           <span v-if="!isCollapsed">ออกจากระบบ</span>
@@ -260,6 +264,9 @@ watch(route, () => { isOpen.value = false })
   padding: 8px;
   border-top: 1px solid #f3f4f6;
 }
+.credits-link:hover { background: #EAF3DE; color: #0F6E56; }
+.credits-link.router-link-active { background: #EAF3DE; color: #085041; font-weight: 500; }
+.credits-link.router-link-active i { color: #0F6E56; }
 .logout-btn { color: #ef4444; }
 .logout-btn:hover { background: #fef2f2; color: #b91c1c; }
 
