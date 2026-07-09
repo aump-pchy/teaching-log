@@ -125,7 +125,9 @@
                         <td class="px-2 py-1.5">
                           <input type="date" v-model="row.date" class="table-input w-36" />
                         </td>
-                        <td class="px-3 py-2 text-gray-500 font-medium text-center">{{ i + 1 }}</td>
+                        <td class="px-2 py-1.5">
+                          <input type="text" v-model="row.period" class="table-input w-16 text-center" placeholder="เช่น 1-2" />
+                        </td>
                         <td class="px-2 py-1.5">
                           <input type="text" v-model="row.time" class="table-input w-28" placeholder="08:00-10:00" />
                         </td>
@@ -575,7 +577,7 @@ const form = reactive({
   week: '', dateFrom: '', dateTo: '',
   topic: '',
   schedule: [
-    { date: '', time: '08:00-10:00', total: '', present: '' },
+    { date: '', period: '1', time: '08:00-10:00', total: '', present: '' },
   ],
   learningMethods: [], teachTechs: [], evalTypes: [],
   media: [], programs: [],
@@ -644,7 +646,7 @@ const OPTIONS = {
 // ── Methods ────────────────────────────────────────────────────────────────
 
 const addRow = () =>
-  form.schedule.push({ date: '', time: '08:00-10:00', total: '', present: '' })
+  form.schedule.push({ date: '', period: '', time: '08:00-10:00', total: '', present: '' })
 
 const removeRow = (i) => {
   if (form.schedule.length > 1) form.schedule.splice(i, 1)
@@ -718,7 +720,7 @@ const submit = async () => {
         const present = Number(row.present) || 0
         return {
           date: row.date || '',
-          period: String(i + 1),
+          period: row.period || String(i + 1),
           time_range: row.time || '',
           total,
           present,
