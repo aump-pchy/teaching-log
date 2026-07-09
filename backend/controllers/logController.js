@@ -1,68 +1,90 @@
-const pool = require('../db/pool')
-const path = require('path')
-const { minioClient, minioPublicClient, BUCKET_NAME } = require('../db/minio')
+const supabase = require('../db/supabase')
 
 /**
  * GET /api/logs
+ * - admin → เห็นทุก log (filter by ?dept=IT ได้)
+ * - teacher → เห็นแค่ log ตัวเอง
  */
 async function getAllLogs(req, res) {
   try {
-    const { id: userId, role: userRole } = req.user
-    const { dept } = req.query
+    // 1. พิมพ์ปลอมตัวตนเป็นแอดมินไว้ตรงนี้เลยค่ะ (หรือจะเปลี่ยนเป็น 'teacher' ก็ได้น้า)
+    //const userId = 3; 
+    //const userRole = 'admin'; // เปลี่ยนเป็น 'admin' เพื่อทดสอบสิทธิ์แอดมิน
 
-    let sql = `
-      SELECT tl.*, u.full_name AS teacher_name, d.name AS department_name, d.id AS dept_id
-      FROM teaching_logs tl
-      JOIN users u ON u.id = tl.user_id
-      LEFT JOIN departments d ON d.id = u.department_id
-      WHERE 1=1
-    `
-    const params = []
+    // 2. เปิดใช้งานตัวแปรแกะ Token จริงที่ผูกไว้กับ authMiddleware คืนมา:
+    const { id: userId, role: userRole } = req.user;
+    
+    // ดึงค่า query ตัวกรองรหัสแผนก เช่น ?dept=IT, ?dept=EE
+    const { dept } = req.query; 
 
+   // 2. ดึงข้อมูลตาราง teaching_logs พร้อม Join ตาราง users และ departments
+    let query = supabase
+      .from('teaching_logs')
+      .select(`
+        *,
+        users!inner (
+          id,
+          full_name,
+          department_id,
+          departments!inner (
+            id,
+            code,
+            name
+          )
+        )
+      `);
+
+    // 3. เงื่อนไขสำหรับคุณครู (Teacher) -> เห็นเฉพาะงานตัวเอง
     if (userRole === 'teacher') {
-      params.push(userId)
-      sql += ` AND tl.user_id = $${params.length}`
+      query = query.eq('user_id', userId);
     }
 
+    // 4. ปลดล็อกระบบกรองของแอดมินให้ฉลาดและตรงกับดาต้าเบส
     if (userRole === 'admin' && dept) {
+      // ตรวจสอบว่าถ้าหน้าบ้านส่งค่ามาเป็นตัวเลข (เช่น 1, 2, 3) ให้กรองผ่าน department_id ตรงๆ
       if (!isNaN(dept)) {
-        params.push(parseInt(dept))
-        sql += ` AND u.department_id = $${params.length}`
+        query = query.eq('users.department_id', parseInt(dept));
       } else {
-        params.push(dept)
-        sql += ` AND d.code = $${params.length}`
+        query = query.filter('users.departments.code', 'eq', dept);
       }
     }
+    // 5. สั่งให้คำสั่งทำงานดึงข้อมูลจริงจาก Supabase
+    const { data: logs, error } = await query;
 
-    sql += ' ORDER BY tl.id DESC'
+    if (error) {
+      throw error;
+    }
 
-    const result = await pool.query(sql, params)
-
-    const formattedLogs = result.rows.map(log => ({
+    // 6. แปลงร่างข้อมูล (Formatting) ให้อยู่ในโครงสร้างที่หน้าบ้าน Vue 3 พร้อมใช้งานได้ทันที
+    const formattedLogs = logs.map(log => ({
       id: log.id,
       week: log.week,
       subject_code: log.subject_code,
       subject_name: log.subject_name,
-      teacher_name: log.teacher_name || 'ไม่ระบุชื่อครู',
-      department_name: log.department_name || 'ไม่ระบุแผนกวิชา'
-    }))
+      // ดึงฟิลด์ full_name จากตาราง users
+      teacher_name: log.users ? log.users.full_name : 'ไม่ระบุชื่อครู',
+      // ดึงฟิลด์ name จากตาราง departments
+      department_name: (log.users && log.users.departments) ? log.users.departments.name : 'ไม่ระบุแผนกวิชา'
+    }));
 
-    return res.status(200).json(formattedLogs)
+    // 7. ส่ง Array ข้อมูลกลับสำเร็จเป็น JSON
+    return res.status(200).json(formattedLogs);
+
   } catch (error) {
-    console.error('Error in getAllLogs:', error)
-    return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการบันทึกการสอน' })
+    console.error('Error in getAllLogs:', error);
+    // ส่ง Error Format ตามสัญญากลุ่ม
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการบันทึกการสอน' });
   }
 }
 
 /**
- * GET /api/logs/:id
+ * GET /api/logs/:id (เวอร์ชันแก้ไขผสานร่างให้หน้าบ้านไม่ระเบิด)
  */
 async function getLogById(req, res) {
   try {
-    const { id } = req.params
-    const { id: userId, role } = req.user
+    const { id } = req.params;
+    const { id: userId, role } = req.user;
 
-<<<<<<< HEAD
     // 1. ดึงข้อมูล teaching_log พร้อมดึงชื่อผู้สอน (users) และชื่อแผนก (departments)
     const { data: log, error: logError } = await supabase
   .from('teaching_logs')
@@ -71,61 +93,67 @@ async function getLogById(req, res) {
     users (
       full_name,
       department_id,
-      departments ( name, headerName )
+      departments ( name )
     )
   `)
   .eq('id', id)
   .single()
-=======
-    const logResult = await pool.query(`
-      SELECT tl.*, u.full_name AS teacher_name, d.name AS department_name
-      FROM teaching_logs tl
-      JOIN users u ON u.id = tl.user_id
-      LEFT JOIN departments d ON d.id = u.department_id
-      WHERE tl.id = $1
-    `, [id])
->>>>>>> origin/feature/auth-users
 
-    const log = logResult.rows[0]
-    if (!log) {
-      return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนนี้' })
+    // 2. ถ้าไม่เจอ Log ให้ส่ง 404 กลับไป
+    if (logError || !log) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนนี้' });
     }
 
+    // 3. ตรวจสอบสิทธิ์ (Permission Check): ถ้าเป็น teacher ต้องเป็นเจ้าของ log เท่านั้น
     if (role === 'teacher' && log.user_id !== userId) {
-      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึงบันทึกการสอนของผู้อื่น' })
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึงบันทึกการสอนของผู้อื่น' });
     }
 
-    const imagesResult = await pool.query(
-      'SELECT * FROM teaching_log_images WHERE log_id = $1 ORDER BY sort_order ASC',
-      [id]
-    )
+    // 4. ดึงข้อมูลรูปภาพที่ผูกกับ Log นี้ (จากฟังก์ชัน getImages ด้านล่างมาประกอบ)
+    // หมายเหตุ: เพื่อความง่ายและจบใน Endpoint เดียว สามารถดึงรูปแบบมี Signed URL ไปพร้อมกันได้เลย
+    const { data: images, error: imgError } = await supabase
+      .from('teaching_log_images')
+      .select('*')
+      .eq('log_id', id)
+      .order('sort_order', { ascending: true });
 
-    // สร้าง signed URL ชั่วคราวจาก MinIO (อายุ 1 ชั่วโมง) แทนของ Supabase Storage เดิม
-    const imagesWithUrls = await Promise.all(
-      imagesResult.rows.map(async (img) => {
-        let signed_url = null
-        try {
-          signed_url = await minioPublicClient.presignedGetObject(BUCKET_NAME, img.storage_path, 60 * 60)
-        } catch (err) {
-          console.error(`ไม่สามารถสร้าง signed URL สำหรับ ${img.storage_path}:`, err.message)
-        }
-        return { ...img, signed_url }
-      })
-    )
+    let imagesWithUrls = [];
+    if (!imgError && images) {
+      // สร้าง Signed URL ให้แต่ละรูปภาพ (อายุลิงก์ 1 ชั่วโมง)
+      imagesWithUrls = await Promise.all(
+        images.map(async (img) => {
+          const { data: signData } = await supabase.storage
+            .from('teaching-log-images')
+            .createSignedUrl(img.storage_path, 60 * 60);
+          
+          return {
+            ...img,
+            signed_url: signData ? signData.signedUrl : null
+          };
+        })
+      );
+    }
 
-    return res.status(200).json({ ...log, images: imagesWithUrls })
+    // 5. ส่งข้อมูล Log พร้อมกับ Array ของรูปภาพกลับไปให้ Frontend
+    return res.status(200).json({
+      ...log,
+      images: imagesWithUrls
+    });
+
   } catch (error) {
-    return res.status(500).json({ error: 'Server error: ' + error.message })
+    return res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
 
 /**
  * POST /api/logs
+ * body: { week, date_from, date_to, subject_name, subject_code, topic,
+ *         attendance, methods, content_methods, media, apps, evaluation,
+ *         outcome_*, problem, solution }
  */
 async function createLog(req, res) {
   try {
     const {
-<<<<<<< HEAD
       semester, 
       week,
       date_from,
@@ -145,19 +173,12 @@ async function createLog(req, res) {
       outcome_application,
       problem,
       solution
-=======
-      week, date_from, date_to, subject_name, subject_code, topic,
-      attendance, methods, content_methods, media, apps, evaluation,
-      outcome_cognitive, outcome_psychomotor, outcome_affective, outcome_application,
-      problem, solution
->>>>>>> origin/feature/auth-users
     } = req.body
 
     if (!subject_name || !topic) {
       return res.status(400).json({ error: 'subject_name and topic are required' })
     }
 
-<<<<<<< HEAD
     const payload = {
       user_id: req.user.id,
       semester: semester || '1/2567',
@@ -180,25 +201,18 @@ async function createLog(req, res) {
       problem: problem || '',
       solution: solution || ''
     }
-=======
-    const result = await pool.query(`
-      INSERT INTO teaching_logs (
-        user_id, week, date_from, date_to, subject_name, subject_code, topic,
-        attendance, methods, content_methods, media, apps, evaluation,
-        outcome_cognitive, outcome_psychomotor, outcome_affective, outcome_application,
-        problem, solution
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-      RETURNING *
-    `, [
-      req.user.id, Number(week) || 1, date_from || '', date_to || '', subject_name,
-      subject_code || '', topic, JSON.stringify(attendance || []), JSON.stringify(methods || {}),
-      JSON.stringify(content_methods || {}), JSON.stringify(media || {}), JSON.stringify(apps || {}),
-      JSON.stringify(evaluation || {}), outcome_cognitive || '', outcome_psychomotor || '',
-      outcome_affective || '', outcome_application || '', problem || '', solution || ''
-    ])
->>>>>>> origin/feature/auth-users
 
-    return res.status(201).json(result.rows[0])
+    const { data, error } = await supabase
+      .from('teaching_logs')
+      .insert(payload)
+      .select('*')
+      .single()
+
+    if (error) {
+      return res.status(500).json({ error: error.message })
+    }
+
+    return res.status(201).json(data)
   } catch (err) {
     console.error('createLog error', err)
     return res.status(500).json({ error: 'Internal server error' })
@@ -210,187 +224,170 @@ async function createLog(req, res) {
  */
 async function updateLog(req, res) {
   try {
-    const { id } = req.params
-    const { id: userId, role } = req.user
-    const updateData = req.body
+    const { id } = req.params;
+    const { id: userId, role } = req.user;
+    const updateData = req.body; // รับฟิลด์ที่จะแก้ไขมาจาก Frontend
 
-    const findResult = await pool.query('SELECT user_id FROM teaching_logs WHERE id = $1', [id])
-    const log = findResult.rows[0]
-    if (!log) {
-      return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนที่ต้องการแก้ไข' })
+    // 1. หาข้อมูล Log เดิมเพื่อเช็กสิทธิ์ก่อน
+    const { data: log, error: findError } = await supabase
+      .from('teaching_logs')
+      .select('user_id')
+      .eq('id', id)  
+      .single();
+
+    if (findError || !log) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนที่ต้องการแก้ไข' });
     }
+
+    // 2. ตรวจสอบสิทธิ์: ถ้าเป็น teacher ต้องแก้เฉพาะ log ของตัวเองเท่านั้น
     if (role === 'teacher' && log.user_id !== userId) {
-      return res.status(403).json({ error: 'ไม่มีสิทธิ์แก้ไขบันทึกการสอนของผู้อื่น' })
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์แก้ไขบันทึกการสอนของผู้อื่น' });
     }
 
-    const allowedFields = [
-      'week', 'date_from', 'date_to', 'subject_name', 'subject_code', 'topic',
-      'attendance', 'methods', 'content_methods', 'media', 'apps', 'evaluation',
-      'outcome_cognitive', 'outcome_psychomotor', 'outcome_affective', 'outcome_application',
-      'problem', 'solution'
-    ]
-    const jsonFields = ['attendance', 'methods', 'content_methods', 'media', 'apps', 'evaluation']
+    // 3. สั่งอัปเดตข้อมูลใน Supabase
+    const { data: updatedLog, error: updateError } = await supabase
+      .from('teaching_logs')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
 
-    const fields = []
-    const values = []
-    let i = 1
-    for (const key of allowedFields) {
-      if (updateData[key] !== undefined) {
-        fields.push(`${key} = $${i++}`)
-        values.push(jsonFields.includes(key) ? JSON.stringify(updateData[key]) : updateData[key])
-      }
-    }
-    if (fields.length === 0) {
-      return res.status(400).json({ error: 'ไม่มีข้อมูลให้แก้ไข' })
+    if (updateError) {
+      return res.status(400).json({ error: 'ไม่สามารถอัปเดตข้อมูลได้: ' + updateError.message });
     }
 
-    values.push(id)
-    const result = await pool.query(
-      `UPDATE teaching_logs SET ${fields.join(', ')} WHERE id = $${i} RETURNING *`,
-      values
-    )
+    // 4. ส่งข้อมูลชิ้นที่อัปเดตแล้วกลับไป
+    return res.status(200).json(updatedLog);
 
-    return res.status(200).json(result.rows[0])
   } catch (error) {
-    return res.status(500).json({ error: 'Server error: ' + error.message })
+    return res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
-
 /**
  * DELETE /api/logs/:id
  */
 async function deleteLog(req, res) {
   try {
-    const { id } = req.params
-    const { id: userId, role } = req.user
+    const { id } = req.params;
+    const { id: userId, role } = req.user;
 
-    const findResult = await pool.query('SELECT user_id FROM teaching_logs WHERE id = $1', [id])
-    const log = findResult.rows[0]
-    if (!log) {
-      return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนที่ต้องการลบ' })
+    // 1. หา Log เดิมเพื่อเช็กสิทธิ์ก่อนลบ
+    const { data: log, error: findError } = await supabase
+      .from('teaching_logs')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (findError || !log) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนที่ต้องการลบ' });
     }
+
+    // 2. ตรวจสอบสิทธิ์: teacher ลบได้เฉพาะของตัวเอง ส่วน admin ลบได้ทุกคนตาม Matrix
     if (role === 'teacher' && log.user_id !== userId) {
-      return res.status(403).json({ error: 'ไม่มีสิทธิ์ลบบันทึกการสอนของผู้อื่น' })
+      return res.status(403).json({ error: 'ไม่มีสิทธิ์ลบบันทึกการสอนของผู้อื่น' });
     }
 
-    // ลบไฟล์รูปจริงใน MinIO ก่อนลบ record (ป้องกันไฟล์ค้างใน bucket)
-    const imagesResult = await pool.query('SELECT storage_path FROM teaching_log_images WHERE log_id = $1', [id])
-    await Promise.all(
-      imagesResult.rows.map((img) =>
-        minioClient.removeObject(BUCKET_NAME, img.storage_path).catch((err) =>
-          console.error(`ลบไฟล์ ${img.storage_path} ใน MinIO ไม่สำเร็จ:`, err.message)
-        )
-      )
-    )
+    // **เพิ่มเติม** ดึงรายการรูปเพื่อลบไฟล์จริงใน Storage ก่อนลบ Record (ป้องกันไฟล์ขยะค้างในระบบ Cloud)
+    const { data: images } = await supabase
+      .from('teaching_log_images')
+      .select('storage_path')
+      .eq('log_id', id);
 
-    await pool.query('DELETE FROM teaching_logs WHERE id = $1', [id])
+    if (images && images.length > 0) {
+      const pathsToDelete = images.map(img => img.storage_path);
+      await supabase.storage.from('teaching-log-images').remove(pathsToDelete);
+    }
 
-    return res.status(200).json({ message: 'Log deleted' })
+    // 3. สั่งลบข้อมูลออกจากตาราง (ตารางรูปภาพย่อยจะถูกลบอัตโนมัติด้วย On Delete Cascade บนฐานข้อมูล)
+    const { error: deleteError } = await supabase
+      .from('teaching_logs')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      return res.status(400).json({ error: 'ไม่สามารถลบข้อมูลได้: ' + deleteError.message });
+    }
+
+    // 4. ส่งข้อความยืนยันความสำเร็จ
+    return res.status(200).json({ message: 'Log deleted' });
+
   } catch (error) {
-    return res.status(500).json({ error: 'Server error: ' + error.message })
+    return res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
 
 /**
  * POST /api/logs/:id/images
- * multer memoryStorage ส่งไฟล์มาเป็น req.file.buffer แล้วอัปโหลดขึ้น MinIO ต่อ
+ * multipart/form-data: file (image), caption, section
+ * บังคับอย่างน้อย 1 รูปก่อน submit log
  */
 async function uploadImage(req, res) {
   try {
-<<<<<<< HEAD
     const logId = Number(req.params.id)
     if (!req.file) {
       return res.status(400).json({ error: 'File is required' })
     }
 
-    const { caption, section, sections } = req.body
-    // 🎯 รองรับทั้งแบบเก่า (section เดี่ยว) และแบบใหม่ (sections หลายค่า ส่งมาเป็น JSON array string)
-    let sectionList = []
-    if (sections) {
-      try {
-        sectionList = JSON.parse(sections)
-      } catch {
-        sectionList = [sections]
-      }
-    } else if (section) {
-      sectionList = [section]
-    }
-    if (!Array.isArray(sectionList) || sectionList.length === 0) {
-      sectionList = ['other']
-    }
-    console.log('🔍 uploadImage received sectionList:', JSON.stringify(sectionList))
+    const { caption, section } = req.body
     const logResult = await supabase
       .from('teaching_logs')
       .select('id, user_id')
       .eq('id', logId)
       .single()
-=======
-    const { id } = req.params
-    const { id: userId, role } = req.user
-    const { caption, section } = req.body
-    const file = req.file
->>>>>>> origin/feature/auth-users
 
-    if (!file) {
-      return res.status(400).json({ error: 'กรุณาแนบไฟล์ภาพ' })
+    if (logResult.error || !logResult.data) {
+      return res.status(404).json({ error: 'Log not found' })
     }
 
-    const logResult = await pool.query('SELECT user_id FROM teaching_logs WHERE id = $1', [id])
-    const log = logResult.rows[0]
-    if (!log) {
-      return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนนี้' })
-    }
-    if (role === 'teacher' && log.user_id !== userId) {
-      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึงบันทึกการสอนของผู้อื่น' })
+    const log = logResult.data
+    if (req.user.role !== 'admin' && log.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden' })
     }
 
-    const ext = path.extname(file.originalname) || ''
-    const objectName = `logs/${id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`
+    const fileName = `${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+    const filePath = `logs/${logId}/${fileName}`
 
-    await minioClient.putObject(BUCKET_NAME, objectName, file.buffer, file.size, {
-      'Content-Type': file.mimetype
-    })
+    const { error: uploadError } = await supabase.storage
+      .from('teaching-log-images')
+      .upload(filePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false
+      })
 
-    const result = await pool.query(
-      `INSERT INTO teaching_log_images (log_id, storage_path, caption, section, sort_order)
-       VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM teaching_log_images WHERE log_id = $1))
-       RETURNING *`,
-      [id, objectName, caption || '', section || 'other']
-    )
+    if (uploadError) {
+      return res.status(500).json({ error: uploadError.message })
+    }
 
-    const signed_url = await minioPublicClient.presignedGetObject(BUCKET_NAME, objectName, 60 * 60)
+    const sortOrderResult = await supabase
+      .from('teaching_log_images')
+      .select('sort_order', { count: 'exact' })
+      .eq('log_id', logId)
 
-<<<<<<< HEAD
     let sortOrder = 0
     if (!sortOrderResult.error && Array.isArray(sortOrderResult.data)) {
       sortOrder = sortOrderResult.data.length
     }
 
-    // 🎯 insert 1 แถวต่อ 1 หมวดที่เลือก (ใช้ไฟล์/storage_path เดียวกันทุกแถว)
-    const rowsToInsert = sectionList.map((sec, idx) => ({
-      log_id: logId,
-      storage_path: filePath,
-      caption: caption || '',
-      section: sec || 'other',
-      sort_order: sortOrder + idx
-    }))
-
     const { data, error: insertError } = await supabase
       .from('teaching_log_images')
-      .insert(rowsToInsert)
+      .insert({
+        log_id: logId,
+        storage_path: filePath,
+        caption: caption || '',
+        section: section || 'other',
+        sort_order: sortOrder
+      })
       .select('*')
+      .single()
 
     if (insertError) {
       return res.status(500).json({ error: insertError.message })
     }
 
     return res.status(201).json(data)
-=======
-    return res.status(201).json({ ...result.rows[0], signed_url })
->>>>>>> origin/feature/auth-users
   } catch (err) {
     console.error('uploadImage error', err)
-    return res.status(500).json({ error: 'อัปโหลดภาพไม่สำเร็จ' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 }
 
@@ -399,39 +396,38 @@ async function uploadImage(req, res) {
  */
 async function getImages(req, res) {
   try {
-    const { id } = req.params
-    const { id: userId, role } = req.user
+    const { id: log_id } = req.params;
 
-    const logResult = await pool.query('SELECT user_id FROM teaching_logs WHERE id = $1', [id])
-    const log = logResult.rows[0]
-    if (!log) {
-      return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนนี้' })
+    // 1. ดึงรายการรูปภาพจากตาราง เรียงลำดับตาม sort_order
+    const { data: images, error: imgError } = await supabase
+      .from('teaching_log_images')
+      .select('*')
+      .eq('log_id', log_id)
+      .order('sort_order', { ascending: true });
+
+    if (imgError) {
+      return res.status(400).json({ error: imgError.message });
     }
-    if (role === 'teacher' && log.user_id !== userId) {
-      return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึงบันทึกการสอนของผู้อื่น' })
-    }
 
-    const result = await pool.query(
-      'SELECT * FROM teaching_log_images WHERE log_id = $1 ORDER BY sort_order ASC',
-      [id]
-    )
+    // 2. วนลูปเพื่อขอ Signed URL (ลิงก์ชั่วคราวในการเปิดเข้าดูรูปที่ถูกซ่อนเป็น Private)
+    const imagesWithSignedUrls = await Promise.all(
+      images.map(async (img) => {
+        const { data: signData, error: signError } = await supabase.storage
+          .from('teaching-log-images')
+          .createSignedUrl(img.storage_path, 60 * 60); // ลิงก์เปิดรูปใช้งานได้ 1 ชม.
 
-    const imagesWithUrls = await Promise.all(
-      result.rows.map(async (img) => {
-        let signed_url = null
-        try {
-          signed_url = await minioPublicClient.presignedGetObject(BUCKET_NAME, img.storage_path, 60 * 60)
-        } catch (err) {
-          console.error(`ไม่สามารถสร้าง signed URL สำหรับ ${img.storage_path}:`, err.message)
-        }
-        return { ...img, signed_url }
+        return {
+          ...img,
+          signed_url: signData ? signData.signedUrl : null
+        };
       })
-    )
+    );
 
-    return res.status(200).json(imagesWithUrls)
-  } catch (err) {
-    console.error('getImages error', err)
-    return res.status(500).json({ error: 'ไม่สามารถดึงรูปภาพได้' })
+    // 3. ส่งข้อมูลชุดรูปภาพกลับไปให้ Frontend
+    return res.status(200).json(imagesWithSignedUrls);
+
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
 
@@ -440,65 +436,43 @@ async function getImages(req, res) {
  */
 async function deleteImage(req, res) {
   try {
-    const { id, imgId } = req.params
-    const { id: userId, role } = req.user
+    const { id: log_id, imgId } = req.params;
 
-    const logResult = await pool.query('SELECT user_id FROM teaching_logs WHERE id = $1', [id])
-    const log = logResult.rows[0]
-    if (!log) {
-      return res.status(404).json({ error: 'ไม่พบข้อมูลบันทึกการสอนนี้' })
-    }
-    if (role === 'teacher' && log.user_id !== userId) {
-      return res.status(403).json({ error: 'ไม่มีสิทธิ์ลบรูปของผู้อื่น' })
-    }
-
-<<<<<<< HEAD
-    // 2. เช็คก่อนว่ามีแถวอื่นในตารางที่อ้างอิง storage_path เดียวกันอยู่ไหม
-    //    (เพราะรูปเดียวกันอาจถูกแท็กหลายหมวด เลยมีหลายแถวชี้ไปไฟล์เดียวกัน)
-    const { data: siblingRows, error: siblingError } = await supabase
+    // 1. ค้นหา Record ของรูปภาพในตารางฐานข้อมูลก่อน
+    const { data: imgRecord, error: findError } = await supabase
       .from('teaching_log_images')
-      .select('id')
-      .eq('storage_path', imgRecord.storage_path)
-      .neq('id', imgId);
+      .select('*')
+      .eq('id', imgId)
+      .eq('log_id', log_id)
+      .single();
 
-    if (siblingError) {
-      return res.status(400).json({ error: 'ตรวจสอบข้อมูลรูปภาพซ้ำไม่สำเร็จ: ' + siblingError.message });
+    if (findError || !imgRecord) {
+      return res.status(404).json({ error: 'ไม่พบรูปภาพหลักฐานที่ต้องการลบ' });
     }
 
-    // 3. ลบไฟล์จริงออกจาก Storage เฉพาะกรณีที่ไม่มีแถวอื่นใช้ไฟล์นี้ร่วมอยู่แล้วเท่านั้น
-    if (!siblingRows || siblingRows.length === 0) {
-      const { error: storageError } = await supabase.storage
-        .from('teaching-log-images')
-        .remove([imgRecord.storage_path]);
+    // 2. สั่งลบไฟล์รูปภาพของจริงออกจากระบบ Supabase Storage Bucket
+    const { error: storageError } = await supabase.storage
+      .from('teaching-log-images')
+      .remove([imgRecord.storage_path]);
 
-      if (storageError) {
-        return res.status(400).json({ error: 'ไม่สามารถลบไฟล์จากระบบจัดเก็บรูปภาพได้: ' + storageError.message });
-      }
+    if (storageError) {
+      return res.status(400).json({ error: 'ไม่สามารถลบไฟล์จากระบบจัดเก็บรูปภาพได้: ' + storageError.message });
     }
 
-    // 4. ลบ Record ประวัติข้อมูลรูปภาพนี้ออกจากตาราง
+    // 3. ลบ Record ประวัติข้อมูลรูปภาพนี้ออกจากตาราง
     const { error: dbDeleteError } = await supabase
       .from('teaching_log_images')
       .delete()
       .eq('id', imgId);
-=======
-    const imgResult = await pool.query(
-      'SELECT * FROM teaching_log_images WHERE id = $1 AND log_id = $2',
-      [imgId, id]
-    )
-    const img = imgResult.rows[0]
-    if (!img) {
-      return res.status(404).json({ error: 'ไม่พบรูปภาพนี้' })
+
+    if (dbDeleteError) {
+      return res.status(400).json({ error: 'ไม่สามารถลบข้อมูลรูปภาพออกจากระบบได้: ' + dbDeleteError.message });
     }
 
-    await minioClient.removeObject(BUCKET_NAME, img.storage_path)
-    await pool.query('DELETE FROM teaching_log_images WHERE id = $1', [imgId])
->>>>>>> origin/feature/auth-users
+    return res.status(200).json({ message: 'Image deleted' });
 
-    return res.status(200).json({ message: 'ลบรูปภาพสำเร็จ' })
-  } catch (err) {
-    console.error('deleteImage error', err)
-    return res.status(500).json({ error: 'ไม่สามารถลบรูปภาพได้' })
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
 
