@@ -157,23 +157,43 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router' 
 import axios from 'axios' 
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()
 
+// 🔧 [แก้ไข] state ที่ template เรียกใช้จริงแต่ของเดิมไม่เคยประกาศไว้เลย
+// (selectedDepartment, termOptions, sortOrder, isLoading, rawLogs)
+// นี่คือสาเหตุของ "Property was accessed during render but is not defined on instance"
+// และ "ReferenceError: rawLogs is not defined" ใน console
 const selectedSemester = ref('') // 🌟 ตัวนี้จะเปลี่ยนค่าอัตโนมัติเมื่อดึงจากฐานข้อมูลสำเร็จ
-const isOpen = ref(false) 
-const departments = ["IT", "AI", "EE", "ME"]
-const selectedDept = ref("")
+const selectedDepartment = ref('')
 const searchQuery = ref('')
+const sortOrder = ref('desc')
+const isLoading = ref(true)
+
+const departments = ref([]) // 🔧 เดิมเป็น array ธรรมดา ทำให้ fetchDepartments().value ใช้ไม่ได้
+const rawLogs = ref([])
+const termOptions = ref([])
 
 const currentUserId = ref(null)
+// 🔧 [แก้ไข] template อ้างถึง userRole ในเงื่อนไข v-if="userRole === 'admin'"
+// และ computed filteredLogs อ้างถึง currentTeacherName แต่ของเดิมไม่มีตัวแปรนี้เลย
+// ⚠️ ตรงนี้ผมอิงจาก key 'role' และ 'name' ที่คาดว่า LoginView.vue เซฟไว้ตอนล็อกอิน
+// (จาก log "บันทึกสิทธิ์และชื่อเครื่องสำเร็จ: admin" ใน LoginView.vue:166)
+// ช่วยเปิด LoginView.vue เช็ค key ที่ใช้ setItem จริงให้ตรงกันด้วยนะครับ
+const userRole = ref(localStorage.getItem('role') || '')
+// ✅ [แก้ไข] ยืนยันแล้วจาก LogFormView.vue ว่า key จริงคือ 'full_name' ไม่ใช่ 'name' ตามที่เดาไว้ก่อนหน้า
+const currentTeacherName = ref(localStorage.getItem('full_name') || '')
 
-// ใช้ VITE_API_URL จาก .env (ตอน build ผ่าน Docker จะถูกกำหนดเป็น /api ให้ผ่าน nginx proxy)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+// 🔧 [เพิ่มใหม่] ฟังก์ชันกลางสำหรับสร้าง auth header เพราะเดิมมีการเรียกใช้ getAuthHeader()
+// ในหลายจุด (fetchTermHistory, fetchLogs, fetchDepartments, deleteLog) แต่ไม่เคยถูกประกาศไว้
+const getAuthHeader = () => {
+  const token = localStorage.getItem('token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token')
@@ -187,24 +207,6 @@ const getUserIdFromToken = () => {
     return JSON.parse(jsonPayload).id 
   } catch (error) {
     return null
-  }
-}
-
-const fetchSystemSettings = async () => {
-  try {
-    const url = selectedDept.value 
-      ? `${API_URL}/logs?dept=${selectedDept.value}` 
-      : `${API_URL}/logs`
-      
-    const token = localStorage.getItem('token') 
-    
-    const response = await axios.get(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    
-    rawLogs.value = response.data
-  } catch (error) {
-    console.error('โหลดข้อมูลระบบกลางไม่สำเร็จ:', error)
   }
 }
 
@@ -284,35 +286,27 @@ const deleteLog = async (id) => {
 
 onMounted(async () => {
   currentUserId.value = getUserIdFromToken()
-  // รันคู่ขนานรวดเร็ว
-  await Promise.all([fetchSystemSettings(), fetchDepartments(), fetchLogs()])
-})
-
-watch(selectedDept, () => {
-  fetchLogs()
-})
-
-watch(selectedSemester, () => {
-  fetchLogs()
+  // รันคู่ขนานรวดเร็ว (ตัด fetchSystemSettings ออกเพราะเป็นฟังก์ชันซ้ำกับ fetchLogs
+  // ทั้งคู่เขียนทับ rawLogs.value เหมือนกัน เรียกพร้อมกันมีแต่จะแข่งกันเขียนทับข้อมูล)
+  await Promise.all([fetchDepartments(), fetchLogs()])
 })
 
 const filteredLogs = computed(() => {
   let result = [...rawLogs.value]
   
-  if (userRole !== 'admin') {
-    if (currentTeacherName) {
-      result = result.filter(log => log.teacher_name === currentTeacherName)
-    }
+  if (userRole.value !== 'admin' && currentTeacherName.value) {
+    result = result.filter(log => log.teacher_name === currentTeacherName.value)
   }
   
-  // 2. ด่านกรองตามเทอม (ปรับตัวเปรียบเทียบให้ฉลาดและสมูทขึ้น ไม่หลุดคิว)
-  if (selectedSemester.value) {
+  // 1. ด่านกรองตามแผนกวิชา (เดิมเช็ค selectedSemester.value ผิดจุด ทำให้กรองแผนกไม่ทำงานจริง)
+  if (selectedDepartment.value) {
     result = result.filter(log => {
       const logDept = log.department_name || log.department || ''
       return logDept.toLowerCase().includes(selectedDepartment.value.toLowerCase().trim())
     })
   }
   
+  // 2. ด่านกรองตามเทอม
   if (selectedSemester.value) {
     result = result.filter(log => {
       const logTerm = log.semester || log.term || ''

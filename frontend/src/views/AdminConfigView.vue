@@ -152,28 +152,39 @@ const newSemester = ref({
 // ใช้ VITE_API_URL จาก .env (ตอน build ผ่าน Docker จะถูกกำหนดเป็น /api ให้ผ่าน nginx proxy)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-// 1. ดึงข้อมูลล่าสุดผ่าน API ของหลังบ้านเราเอง
-const fetchCurrentSettings = async () => {
+// 🔧 [แก้ไข] template เรียก historyList (บรรทัด 113, 119) แต่ของเดิมไม่เคยประกาศไว้เลย
+// ทำให้ "Cannot read properties of undefined (reading 'length')" ตอน render
+const historyList = ref([])
+
+// 🔧 [เพิ่มใหม่] getAuthHeader ถูกเรียกใช้ใน saveExecutiveSettings/addNewSemester
+// แต่ไม่เคยถูกประกาศไว้ในไฟล์นี้เลย
+const getAuthHeader = () => {
+  const token = localStorage.getItem('token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+// 🔧 [เพิ่มใหม่] onMounted เรียก fetchExecutives() แต่ของเดิมไม่มีฟังก์ชันนี้เลย
+// (มีแต่ fetchCurrentSettings ที่เขียนผิด endpoint และอ้าง formData ที่ไม่มีอยู่จริง จึงตัดทิ้ง)
+const fetchExecutives = async () => {
   try {
-    const response = await axios.get(`${API_URL}/system/settings`)
-    if (response.data) {
-      formData.value = response.data
+    const response = await axios.get(`${API_URL}/system/settings/executives`, { headers: getAuthHeader() })
+    if (response.data?.data) {
+      executives.value = response.data.data
     }
   } catch (error) {
-    console.error(error)
+    console.error('โหลดข้อมูลผู้บริหารไม่สำเร็จ:', error)
   }
 }
 
-// 2. เซฟข้อมูลยิงผ่านหลังบ้าน Node.js เอาไปบันทึกลง Postgres อีกทอดหนึ่ง
-const handleSave = async () => {
-  isSubmitting.value = true
+// 🔧 [เพิ่มใหม่] onMounted/addNewSemester เรียก fetchTermHistory() แต่ของเดิมไม่มีฟังก์ชันนี้เลย
+const fetchTermHistory = async () => {
   try {
-    const response = await axios.post(`${API_URL}/system/settings`, formData.value)
-    if (response.data.success) {
-      alert('บันทึกข้อมูลระบบกลางขึ้นฐานข้อมูลสำเร็จ')
+    const response = await axios.get(`${API_URL}/system/settings/terms`, { headers: getAuthHeader() })
+    if (response.data?.data) {
+      historyList.value = response.data.data
     }
   } catch (error) {
-    console.error(error)
+    console.error('โหลดประวัติภาคเรียนไม่สำเร็จ:', error)
   }
 }
 

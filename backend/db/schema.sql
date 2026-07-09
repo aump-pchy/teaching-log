@@ -31,6 +31,17 @@ CREATE TABLE system_settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ================= ACADEMIC TERMS (ประวัติภาคเรียน/ปีการศึกษาที่เคยเปิดทั้งหมด) =================
+-- 🔧 [เพิ่มใหม่] ตารางนี้หายไปจาก schema เดิม แต่ systemController.js (getTerms/addTerm)
+-- และหน้า AdminConfigView.vue เรียกใช้งานอยู่จริง ทำให้เจอ error 42P01
+-- "relation academic_terms does not exist" ตอนกด /admin/config
+CREATE TABLE academic_terms (
+  id SERIAL PRIMARY KEY,
+  term VARCHAR(20) NOT NULL,
+  academic_year VARCHAR(20) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ================= TEACHING LOGS (ชื่อตารางตรงกับที่ logController.js เรียก) =================
 CREATE TABLE teaching_logs (
   id SERIAL PRIMARY KEY,
@@ -79,6 +90,9 @@ INSERT INTO departments (code, name, "headerName") VALUES
   ('ME', 'ช่างกล', 'แผนกช่างกล');
 
 INSERT INTO system_settings (id, term, academic_year) VALUES (1, '1', '2569');
+
+-- ให้ตรงกับภาคเรียนเริ่มต้นที่ตั้งไว้ใน system_settings ด้านบน
+INSERT INTO academic_terms (term, academic_year) VALUES ('1', '2569');
 
 -- password ของทุกคนคือ "password123" (แฮชด้วย bcrypt ไว้ล่วงหน้าแล้ว)
 INSERT INTO users (email, password_hash, full_name, role, department_id, is_approved) VALUES
