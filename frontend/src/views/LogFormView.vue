@@ -83,10 +83,6 @@
                 </FormField>
 
               </div>
-              <div class="flex gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-800 text-sm">
-                <i class="fa-solid fa-circle-info text-blue-500 mt-0.5 shrink-0"></i>
-                สัปดาห์ที่ และช่วงวันที่สอน ให้กรอกในตารางการสอนที่ขั้นตอนถัดไป
-              </div>
 
             </div>
           </div>
