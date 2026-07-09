@@ -81,17 +81,11 @@
                 <FormField icon="fa-layer-group" label="ระดับชั้น / กลุ่ม">
                   <input v-model="form.level" class="form-input" placeholder="เช่น ปวช.2/1" />
                 </FormField>
-                <FormField icon="fa-calendar-week" label="สัปดาห์ที่" required>
-                  <input v-model="form.week" type="number" min="1" class="form-input" placeholder="เช่น 1" />
-                </FormField>
-                <div></div>
-                <FormField icon="fa-calendar-day" label="ระหว่างวันที่" required>
-                  <input v-model="form.dateFrom" type="date" class="form-input" />
-                </FormField>
-                <FormField icon="fa-calendar-check" label="ถึงวันที่" required>
-                  <input v-model="form.dateTo" type="date" class="form-input" />
-                </FormField>
 
+              </div>
+              <div class="flex gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-800 text-sm">
+                <i class="fa-solid fa-circle-info text-blue-500 mt-0.5 shrink-0"></i>
+                สัปดาห์ที่ และช่วงวันที่สอน ให้กรอกในตารางการสอนที่ขั้นตอนถัดไป
               </div>
 
             </div>
@@ -107,7 +101,9 @@
                   <table class="w-full text-xs">
                     <thead>
                       <tr class="bg-green-800 text-white">
-                        <th class="px-3 py-2.5 rounded-tl-lg">วันที่สอน</th>
+                        <th class="px-3 py-2.5 rounded-tl-lg">สัปดาห์ที่</th>
+                        <th class="px-3 py-2.5">วันที่สอน</th>
+                        <th class="px-3 py-2.5">ถึงวันที่สอน</th>
                         <th class="px-3 py-2.5">คาบที่</th>
                         <th class="px-3 py-2.5">เวลาที่สอน</th>
                         <th class="px-3 py-2.5">ทั้งหมด</th>
@@ -123,7 +119,13 @@
                         class="border-b border-gray-50 hover:bg-green-50/50 transition-colors"
                       >
                         <td class="px-2 py-1.5">
+                          <input type="number" min="1" v-model="row.week" class="table-input w-14 text-center" placeholder="1" />
+                        </td>
+                        <td class="px-2 py-1.5">
                           <input type="date" v-model="row.date" class="table-input w-36" />
+                        </td>
+                        <td class="px-2 py-1.5">
+                          <input type="date" v-model="row.dateTo" class="table-input w-36" />
                         </td>
                         <td class="px-2 py-1.5">
                           <input type="text" v-model="row.period" class="table-input w-16 text-center" placeholder="เช่น 1-2" />
@@ -577,7 +579,7 @@ const form = reactive({
   week: '', dateFrom: '', dateTo: '',
   topic: '',
   schedule: [
-    { date: '', period: '1', time: '08:00-10:00', total: '', present: '' },
+    { week: '1', date: '', dateTo: '', period: '1', time: '08:00-10:00', total: '', present: '' },
   ],
   learningMethods: [], teachTechs: [], evalTypes: [],
   media: [], programs: [],
@@ -646,7 +648,10 @@ const OPTIONS = {
 // ── Methods ────────────────────────────────────────────────────────────────
 
 const addRow = () =>
-  form.schedule.push({ date: '', period: '', time: '08:00-10:00', total: '', present: '' })
+  form.schedule.push({
+    week: form.schedule[form.schedule.length - 1]?.week || '',
+    date: '', dateTo: '', period: '', time: '08:00-10:00', total: '', present: ''
+  })
 
 const removeRow = (i) => {
   if (form.schedule.length > 1) form.schedule.splice(i, 1)
@@ -707,11 +712,20 @@ const submit = async () => {
   isSubmitting.value = true
 
   try {
+    // ดึงสัปดาห์ที่จากแถวแรกของตาราง และหาช่วงวันที่ (เริ่มสุด-สิ้นสุดสุด) จากทุกแถวรวมกัน
+    const firstWeek = Number(form.schedule[0]?.week) || 0
+    const allDates = form.schedule
+      .flatMap(row => [row.date, row.dateTo])
+      .filter(Boolean)
+      .sort()
+    const derivedDateFrom = allDates[0] || ''
+    const derivedDateTo = allDates[allDates.length - 1] || ''
+
     const payload = {
       semester: '1/2569',
-      week: Number(form.week) || 0,
-      date_from: form.dateFrom || '',
-      date_to: form.dateTo || '',
+      week: firstWeek,
+      date_from: derivedDateFrom,
+      date_to: derivedDateTo,
       subject_name: form.subject,
       subject_code: form.subjectCode,
       topic: form.topic,
@@ -719,7 +733,9 @@ const submit = async () => {
         const total = Number(row.total) || 0
         const present = Number(row.present) || 0
         return {
+          week: Number(row.week) || 0,
           date: row.date || '',
+          date_to: row.dateTo || '',
           period: row.period || String(i + 1),
           time_range: row.time || '',
           total,
@@ -740,8 +756,9 @@ const submit = async () => {
       other_details: form.otherDetails 
     }
 
-    if (!form.subject.trim() || !form.topic.trim() || !form.week || !form.dateFrom || !form.dateTo) {
-      toastMessage.value = 'กรุณากรอกชื่อวิชา, สัปดาห์ที่, ระหว่างวันที่-ถึง และหัวข้อก่อนบันทึก'
+    const hasValidRow = form.schedule.some(row => row.week && row.date)
+    if (!form.subject.trim() || !form.topic.trim() || !hasValidRow) {
+      toastMessage.value = 'กรุณากรอกชื่อวิชา, หัวข้อ และตารางการสอน (สัปดาห์ที่และวันที่สอน) อย่างน้อย 1 แถวก่อนบันทึก'
       isSubmitting.value = false
       setTimeout(() => {
         toastMessage.value = ''
