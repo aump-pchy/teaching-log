@@ -49,7 +49,7 @@
                 id="email"
                 v-model="form.email"
                 type="email"
-                placeholder="yourname@loeitc.ac.th"
+                placeholder="yourname@loeitech.ac.th"
                 autocomplete="email"
                 @input="clearError('email')"
               />
@@ -105,7 +105,7 @@
         </div>
 
         <div class="card-footer">
-          <p>หากพบปัญหาในการเข้าสู่ระบบ กรุณาติดต่อ<br><strong>ผู้ดูแลระบบหรือหัวหน้าแผนกวิชา</strong></p>
+          <p>หากพบปัญหาในการเข้าสู่ระบบ กรุณาติดต่อ<br><strong>งานพัฒนาหลัสูตรและการจัดการเรียนรู้</strong></p>
         </div>
       </div>
     </div>

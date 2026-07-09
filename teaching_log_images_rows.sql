@@ -1,0 +1,1 @@
+INSERT INTO "public"."teaching_log_images" ("id", "log_id", "storage_path", "caption", "section", "sort_order", "uploaded_at") VALUES (1, 10, 'logs/10/1781769290145_sample.png', 'Test image', 'media', 0, '2026-06-18 07:54:51.038446+00');
