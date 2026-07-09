@@ -146,8 +146,8 @@ import axios from 'axios'
 const router = useRouter()
 const rawLogs = ref([])
 
-const selectedSemester = ref('1/2569')
-const isOpen = ref(false)
+const selectedSemester = ref('') // 🌟 ตัวนี้จะเปลี่ยนค่าอัตโนมัติเมื่อดึงจากฐานข้อมูลสำเร็จ
+const isOpen = ref(false) 
 const departments = ["IT", "AI", "EE", "ME"]
 const selectedDept = ref("")
 const searchQuery = ref('')
@@ -246,6 +246,7 @@ const filteredLogs = computed(() => {
     }
   }
   
+  // 2. ด่านกรองตามเทอม (ปรับตัวเปรียบเทียบให้ฉลาดและสมูทขึ้น ไม่หลุดคิว)
   if (selectedSemester.value) {
     result = result.filter(log => {
       const logTerm = log.semester || log.term || '1/2569'

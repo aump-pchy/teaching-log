@@ -350,7 +350,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // ─── Config ──────────────────────────────────────────
-const API = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}`
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}`
 
 const route  = useRoute()
 const router = useRouter()

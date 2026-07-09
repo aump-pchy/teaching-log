@@ -64,7 +64,13 @@
 
               <div class="grid grid-cols-2 gap-4">
                 <FormField icon="fa-user-tie" label="ชื่อ-สกุล ครูผู้สอน" required>
-                  <input v-model="form.teacherName" class="form-input" placeholder="ระบุชื่อ-สกุล ครูผู้สอน" />
+                  <input
+                    v-model="form.teacherName"
+                    class="form-input bg-gray-50 cursor-not-allowed"
+                    placeholder="กำลังดึงชื่อจากบัญชีผู้ใช้..."
+                    readonly
+                  />
+                  <p class="text-xs text-gray-400 mt-1">ดึงมาจากบัญชีผู้ใช้ที่เข้าสู่ระบบอัตโนมัติ</p>
                 </FormField>
                 <FormField icon="fa-graduation-cap" label="วิชาสอน" required>
                   <input v-model="form.subject" class="form-input" placeholder="ระบุชื่อวิชา" />
@@ -80,8 +86,9 @@
 
             </div>
           </div>
-
+            
           <div v-else-if="currentStep === 2" key="step2">
+
             <StepHeader icon="fa-chalkboard-user" title="รูปแบบและวิธีการจัดการเรียนรู้" step="2" />
             <div class="p-7 space-y-6">
               <div>
@@ -97,8 +104,7 @@
                         <th class="px-3 py-2.5">ทั้งหมด</th>
                         <th class="px-3 py-2.5">มาเรียน</th>
                         <th class="px-3 py-2.5">ขาด</th>
-                        <th class="px-3 py-2.5">คะแนน</th>
-                        <th class="px-3 py-2.5 rounded-tr-lg"></th>
+                        <th class="px-3 py-2.5 rounded-tr-lg">คะแนน</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -129,22 +135,10 @@
                         <td class="px-2 py-1.5">
                           <input type="number" v-model="row.score" class="table-input w-16 text-center" placeholder="0" />
                         </td>
-                        <td class="px-2 py-1.5 text-center">
-                          <button
-                            @click="removeRow(i)"
-                            class="text-red-400 hover:text-red-600 transition-colors p-1"
-                            :disabled="form.schedule.length === 1"
-                          >
-                            <i class="fa-solid fa-trash-can text-xs"></i>
-                          </button>
-                        </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-                <button @click="addRow" class="mt-2.5 btn-dashed">
-                  <i class="fa-solid fa-plus text-xs"></i> เพิ่มแถว
-                </button>
               </div>
 
               <div>
@@ -155,7 +149,7 @@
                   placeholder="ระบุหัวข้อ / เรื่องที่สอนในครั้งนี้..."
                 ></textarea>
               </div>
-
+              
               <div>
                 <SectionTitle icon="fa-diagram-project" label="1. รูปแบบการจัดการเรียนรู้" />
                 <CheckboxGrid :items="OPTIONS.methods" v-model="form.learningMethods" v-model:otherText="form.otherDetails.methods" />
@@ -164,35 +158,56 @@
                 <SectionTitle icon="fa-lightbulb" label="2. วิธีการให้เนื้อหา" />
                 <CheckboxGrid :items="OPTIONS.teachTechs" v-model="form.teachTechs" v-model:otherText="form.otherDetails.teachTechs" />
               </div>
-              <div>
-                <SectionTitle icon="fa-clipboard-check" label="3. การประเมินผล" />
-                <CheckboxGrid :items="OPTIONS.evalTypes" v-model="form.evalTypes" v-model:otherText="form.otherDetails.evalTypes" />
+              <!-- -------------- -->
+               <div>
+                <SectionTitle icon="fa-photo-film" label="3. สื่อที่ใช้/แหล่งเรียนรู้" />
+                <CheckboxGrid :items="OPTIONS.mediaTypes" v-model="form.media" v-model:otherText="form.otherDetails.media" />
               </div>
+              
+              <!-- ------------- -->
             </div>
           </div>
 
           <div v-else-if="currentStep === 3" key="step3">
             <StepHeader icon="fa-laptop-code" title="สื่อการสอน & โปรแกรม/E-Learning" step="3" />
             <div class="p-7 space-y-6">
+              <!-- ---------- -->
               <div>
-                <SectionTitle icon="fa-photo-film" label="สื่อที่ใช้/แหล่งเรียนรู้" />
-                <CheckboxGrid :items="OPTIONS.mediaTypes" v-model="form.media" v-model:otherText="form.otherDetails.media" />
+                <SectionTitle icon="fa-clipboard-check" label="การประเมินผล" />
+                <CheckboxGrid :items="OPTIONS.evalTypes" v-model="form.evalTypes" v-model:otherText="form.otherDetails.evalTypes" />
               </div>
+              <!-- ------- -->
               <div>
                 <SectionTitle icon="fa-desktop" label="โปรแกรม/E-Learning/Application" />
                 <CheckboxGrid :items="OPTIONS.programs" v-model="form.programs" v-model:otherText="form.otherDetails.programs" />
               </div>
               <div>
-                <SectionTitle icon="fa-chart-bar" label="ผลการจัดการเรียนรู้" />
-                <CheckboxGrid :items="OPTIONS.results" v-model="form.results" v-model:otherText="form.otherDetails.results" />
+                <SectionTitle icon="fa-chart-bar" label="ผลการจัดการเรียนรู้ (ตามสมรรถนะที่พึงประสงค์)" />
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField icon="fa-brain" label="พุทธิพิสัย">
+                    <textarea v-model="form.outcomeCognitive" class="form-input min-h-[80px] resize-y" placeholder="ระบุผลลัพธ์ด้านพุทธิพิสัย..."></textarea>
+                  </FormField>
+                  <FormField icon="fa-hand-sparkles" label="ทักษะพิสัย">
+                    <textarea v-model="form.outcomePsychomotor" class="form-input min-h-[80px] resize-y" placeholder="ระบุผลลัพธ์ด้านทักษะพิสัย..."></textarea>
+                  </FormField>
+                  <FormField icon="fa-heart" label="จิตพิสัย">
+                    <textarea v-model="form.outcomeAffective" class="form-input min-h-[80px] resize-y" placeholder="ระบุผลลัพธ์ด้านจิตพิสัย..."></textarea>
+                  </FormField>
+                  <FormField icon="fa-arrows-spin" label="การประยุกต์">
+                    <textarea v-model="form.outcomeApplication" class="form-input min-h-[80px] resize-y" placeholder="ระบุผลลัพธ์ด้านการประยุกต์..."></textarea>
+                  </FormField>
+                </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
-                <FormField icon="fa-triangle-exclamation" label="ปัญหาที่พบ">
-                  <textarea v-model="form.problem" class="form-input min-h-[80px] resize-y" placeholder="ระบุปัญหา..."></textarea>
-                </FormField>
-                <FormField icon="fa-wand-magic-sparkles" label="แนวทางการแก้ไข">
-                  <textarea v-model="form.solution" class="form-input min-h-[80px] resize-y" placeholder="ระบุแนวทางแก้ไข..."></textarea>
-                </FormField>
+              <div>
+                <SectionTitle icon="fa-triangle-exclamation" label="ปัญหาในการจัดการเรียนรู้ และแนวทางการแก้ไขและพัฒนา" />
+                <div class="grid grid-cols-2 gap-4">
+                  <FormField icon="fa-triangle-exclamation" label="ปัญหาในการจัดการเรียนรู้">
+                    <textarea v-model="form.problem" class="form-input min-h-[80px] resize-y" placeholder="ระบุปัญหา..."></textarea>
+                  </FormField>
+                  <FormField icon="fa-wand-magic-sparkles" label="แนวทางการแก้ไขและพัฒนา">
+                    <textarea v-model="form.solution" class="form-input min-h-[80px] resize-y" placeholder="ระบุแนวทางแก้ไข..."></textarea>
+                  </FormField>
+                </div>
               </div>
             </div>
           </div>
@@ -326,7 +341,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, defineComponent, h } from 'vue'
+import { ref, reactive, defineComponent, h, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 
@@ -335,13 +350,36 @@ const API_URL   = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const isSubmitting = ref(false)
 const toastMessage = ref('')
 
+// 🎯 ดึงชื่อ-สกุลผู้ใช้ที่ login อยู่มาเติมในช่อง "ชื่อ-สกุล ครูผู้สอน" อัตโนมัติ
+onMounted(async () => {
+  // 1. ใช้ค่าที่เก็บไว้ตอน login ก่อน (แสดงผลได้ทันทีไม่ต้องรอ API)
+  const cachedName = localStorage.getItem('full_name')
+  if (cachedName) {
+    form.teacherName = cachedName
+  }
+
+  // 2. ยิงไปดึงข้อมูลล่าสุดจาก backend ซ้อนอีกที เผื่อชื่อในระบบถูกแก้ไขหลัง login
+  try {
+    const token = localStorage.getItem('token')
+    const { data } = await axios.get(`${API_URL}/auth/me`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+    if (data?.full_name) {
+      form.teacherName = data.full_name
+      localStorage.setItem('full_name', data.full_name)
+    }
+  } catch (err) {
+    console.warn('ดึงชื่อผู้ใช้ปัจจุบันจาก backend ไม่สำเร็จ ใช้ค่าที่แคชไว้แทน', err)
+  }
+})
+
 const SECTION_KEY_MAP = {
-  'รูปแบบจัดการเรียนรู้': 'method',
-  'วิธีการให้เนื้อหา': 'content',
+  'รูปแบบจัดการเรียนรู้': 'format',
+  'วิธีการให้เนื้อหา': 'method',
   'สื่อที่ใช้ / แหล่งเรียนรู้': 'media',
-  'โปรแกรม / E-Learning / Application': 'app',
-  'โปรแกรม / E-learning / Application': 'app',
-  'การประเมินผล': 'evaluation'
+  'โปรแกรม / E-Learning / Application': 'app_eval',
+  'โปรแกรม / E-learning / Application': 'app_eval',
+  'การประเมินผล': 'app_eval'
 }
 
 // แปลง key ของฟอร์ม (เช่น 'onsite','lecture','ppt'...) ให้ตรงกับ key ที่ LogDetailView.vue ต้องการ
@@ -353,17 +391,16 @@ const KEY_MAPS = {
   },
   teachTechs: {
     lecture: 'lecture', experiment: 'experiment', group: 'discussion',
-    center: 'center', pjbl: 'pjbl', moral: 'case_study', stem: 'stem', other: 'other',
+    center: 'center', pjbl: 'pjbl', moral: 'case_study', stem: 'stem',
+    game: 'game', situation: 'situation', other: 'other',
   },
   mediaTypes: {
-    ppt: 'ppt', ebook: 'ebook', notebook: 'worksheet', doc: 'doc', other: 'other',
+    ppt: 'ppt', ebook: 'ebook', notebook: 'worksheet', doc: 'doc',
+    book: 'book', model: 'model', other: 'other',
   },
   programs: {
     teams: 'classroom', gclass: 'classroom', zoom: 'zoom',
     facebook: 'facebook', line: 'line', other: 'other',
-  },
-  results: {
-    pretest: 'observe', posttest: 'test', observe: 'work', activity: 'observe', other: 'other',
   },
 }
 
@@ -384,11 +421,12 @@ const toBooleanObject = (selectedKeys, optionsList, mapKey, otherDetailText = ''
 }
 
 const normalizeSection = (categories) => {
-  if (!categories?.length) return 'other'
-  const firstMapped = categories
+  if (!categories?.length) return ['other']
+  const mapped = categories
     .map((label) => SECTION_KEY_MAP[label])
-    .find(Boolean)
-  return firstMapped || 'other'
+    .filter(Boolean)
+  const uniqueMapped = [...new Set(mapped)]
+  return uniqueMapped.length ? uniqueMapped : ['other']
 }
 
 // ── Inline sub-components ──────────────────────────────────────────────
@@ -521,10 +559,10 @@ const form = reactive({
   teacherName: '', subject: '', subjectCode: '', company: '', level: '', topic: '', logDate: '',
   schedule: [
     { date: '', date_to: '', time: '08:00-10:00', total: '', present: '', absent: '', score: '' },
-    { date: '', date_to: '', time: '08:00-10:00', total: '', present: '', absent: '', score: '' },
   ],
   learningMethods: [], teachTechs: [], evalTypes: [],
-  media: [], programs: [], results: [],
+  media: [], programs: [],
+  outcomeCognitive: '', outcomePsychomotor: '', outcomeAffective: '', outcomeApplication: '',
   problem: '', solution: '',
   teacherSig: '', teacherSigDate: '',
   supervisorSig: '', supervisorSigDate: '',
@@ -533,8 +571,7 @@ const form = reactive({
     teachTechs: '',
     evalTypes: '',
     media: '',
-    programs: '',
-    results: ''
+    programs: ''
   }
 })
 
@@ -545,8 +582,8 @@ const OPTIONS = {
     { value: 'onsite',   label: 'การเรียนแบบปกติ (On-Site)' },
     { value: 'tv',       label: 'ผ่านทาง Digital TV (On-Air)' },
     { value: 'online',   label: 'อินเทอร์เน็ต (On-Line)' },
-    { value: 'app',      label: 'แอพพลิเคชัน (On-Demand)' },
-    { value: 'handout',  label: 'แจกใบงาน (On-Hand)' },
+    { value: 'app',      label: 'แอปพลิเคชัน (On-Demand)' },
+    { value: 'handout',  label: 'ผ่านหนังสือ แบบฝึกหัด' },
     { value: 'other',    label: 'อื่นๆ ระบุ...' },
   ],
   teachTechs: [
@@ -557,6 +594,8 @@ const OPTIONS = {
     { value: 'pjbl',       label: 'PJBL' },
     { value: 'moral',      label: 'คุณธรรมศึกษา' },
     { value: 'stem',       label: 'STEM' },
+    { value: 'game',       label: 'เกมส์' },
+    { value: 'situation',  label: 'สถานการณ์จำลอง' },
     { value: 'other',      label: 'อื่นๆ ระบุ...' },
   ],
   evalTypes: [
@@ -571,6 +610,8 @@ const OPTIONS = {
     { value: 'ebook',    label: 'E-Book' },
     { value: 'notebook', label: 'ใบงาน/ใบความรู้' },
     { value: 'doc',      label: 'เอกสารประกอบการสอน' },
+    { value: 'book',     label: 'หนังสือ' },
+    { value: 'model',    label: 'หุ่นจำลอง/ของจริง' },
     { value: 'other',    label: 'อื่นๆ ระบุ...' },
   ],
   programs: [
@@ -580,13 +621,6 @@ const OPTIONS = {
     { value: 'facebook', label: 'Facebook' },
     { value: 'line',     label: 'Line' },
     { value: 'other',    label: 'อื่นๆ ระบุ...' },
-  ],
-  results: [
-    { value: 'pretest',   label: 'แบบทดสอบก่อนเรียน' },
-    { value: 'posttest',  label: 'แบบทดสอบหลังเรียน' },
-    { value: 'observe',   label: 'การตรวจงาน' },
-    { value: 'activity',  label: 'การสังเกตพฤติกรรม' },
-    { value: 'other',     label: 'อื่นๆ ระบุ...' },
   ],
 }
 
@@ -668,11 +702,10 @@ const submit = async () => {
       content_methods: toBooleanObject(form.teachTechs, OPTIONS.teachTechs, 'teachTechs', form.otherDetails.teachTechs),
       media: toBooleanObject(form.media, OPTIONS.mediaTypes, 'mediaTypes', form.otherDetails.media),
       apps: toBooleanObject(form.programs, OPTIONS.programs, 'programs', form.otherDetails.programs),
-      evaluation: toBooleanObject(form.results, OPTIONS.results, 'results', form.otherDetails.results),
-      outcome_cognitive: '',
-      outcome_psychomotor: '',
-      outcome_affective: '',
-      outcome_application: '',
+      outcome_cognitive: form.outcomeCognitive || '',
+      outcome_psychomotor: form.outcomePsychomotor || '',
+      outcome_affective: form.outcomeAffective || '',
+      outcome_application: form.outcomeApplication || '',
       problem: form.problem || '',
       solution: form.solution || '',
       other_details: form.otherDetails 
@@ -702,7 +735,7 @@ const submit = async () => {
         const formData = new FormData()
         formData.append('file', preview.file)
         formData.append('caption', preview.name)
-        formData.append('section', normalizeSection(preview.categories))
+        formData.append('sections', JSON.stringify(normalizeSection(preview.categories)))
 
         await axios.post(`${API_URL}/logs/${logId}/images`, formData)
       }
