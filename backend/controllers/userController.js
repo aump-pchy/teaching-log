@@ -29,7 +29,7 @@ exports.getAllUsers = async (req, res) => {
   }
 }
 
-// 2. ดึงข้อมูลผู้ใช้รายบุคคล — admin ดูใครก็ได้, คนอื่นดูได้แค่ id ของตัวเอง
+// ⚠️ เช็คสิทธิ์ในนี้: admin ดูใครก็ได้, คนอื่นดูได้แค่ id ของตัวเอง
 exports.getUserById = async (req, res) => {
   try {
     const { id } = req.params
@@ -98,7 +98,7 @@ exports.updateUser = async (req, res) => {
     values.push(id)
     const result = await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${i} RETURNING *`, values)
 
-    return res.status(200).json({ message: 'อัปเดตข้อมูลผู้ใช้งานสำเร็จแล้วครับอ้าย!', data: result.rows })
+    return res.status(200).json({ message: 'อัปเดตข้อมูลผู้ใช้งานสำเร็จแล้วครับ', data: result.rows })
   } catch (error) {
     console.error('Backend Error (updateUser):', error.message)
     return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล', details: error.message })

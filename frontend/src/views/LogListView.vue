@@ -215,6 +215,23 @@ const getUserIdFromToken = () => {
 // อาจยังไม่มีบันทึกการสอนของใครเลยสักรายการ ตัวเลือกจะไม่โผล่ถ้าอิงจาก log เท่านั้น
 const fetchTermHistory = async () => {
   try {
+    // 🆕 [รวมจาก dev] ดึงค่าคอนฟิกภาคเรียนปัจจุบันจากหน้า Admin มาตั้งเป็นค่า default ให้ dropdown อัตโนมัติ
+    const currentSettingsResponse = await axios.get(`${API_BASE}/system/settings`, { headers: getAuthHeader() })
+    if (currentSettingsResponse.data) {
+      const { term, academic_year } = currentSettingsResponse.data
+      // 🔧 กัน error ถ้ายังไม่เคยตั้งค่าภาคเรียนไว้เลย (term เป็น null)
+      if (term && academic_year) {
+        // แปลงค่าให้ตรงกับ Value ของ `<option>` ในหน้าต่าง UI
+        if (term.toLowerCase() === 'summer') {
+          selectedSemester.value = 'summer'
+        } else {
+          selectedSemester.value = `${term}/${academic_year}`
+        }
+        console.log('ระบบโหลดภาคเรียนเริ่มต้นอัตโนมัติสำเร็จ:', selectedSemester.value)
+      }
+    }
+
+    // ดึงประวัติภาคเรียนทั้งหมดมาทำ dropdown ตัวเลือก
     const response = await axios.get(`${API_BASE}/system/settings/terms`, { headers: getAuthHeader() })
     if (response.data && Array.isArray(response.data.data)) {
       return response.data.data.map(t => `${t.term}/${t.academic_year}`)
