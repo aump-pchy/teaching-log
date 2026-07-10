@@ -18,13 +18,17 @@
           <input 
             type="text" 
             v-model="searchQuery"
-            placeholder="ค้นหารหัสวิชา, ชื่อวิชา..." 
+            placeholder="ค้นหารหัสวิชา, ชื่อวิชา, ภาคเรียน..." 
             class="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:border-[#1e7e34] focus:ring-1 focus:ring-[#1e7e34] outline-none font-medium"
           />
           <span class="absolute left-3 top-2.5 text-slate-400 text-xs select-none">🔍</span>
         </div>
         
+        <!-- 🟢 [แก้ไข] บัญชีครูเห็นได้แค่บันทึกของตัวเองอยู่แล้ว (กรองที่ currentTeacherName
+             ด้านล่างใน filteredLogs) ตัวเลือก "แผนกวิชา" จึงไม่มีความหมายอะไรสำหรับครูเลย
+             แสดงเฉพาะตอน login เป็นแอดมินเท่านั้น -->
         <select 
+          v-if="userRole === 'admin'"
           v-model="selectedDepartment"
           class="border border-slate-200 rounded-xl py-2 px-3 text-xs bg-white outline-none focus:border-[#1e7e34] font-bold text-slate-600 cursor-pointer"
         >
@@ -56,7 +60,7 @@
           :value="term"
           style="color:#1e293b; background-color:#ffffff;"
         >
-          ภาคเรียนที่ {{ term }}
+          {{ formatTermLabel(term) }}
         </option>
       </select>
 
@@ -215,23 +219,10 @@ const getUserIdFromToken = () => {
 // อาจยังไม่มีบันทึกการสอนของใครเลยสักรายการ ตัวเลือกจะไม่โผล่ถ้าอิงจาก log เท่านั้น
 const fetchTermHistory = async () => {
   try {
-    // 🆕 [รวมจาก dev] ดึงค่าคอนฟิกภาคเรียนปัจจุบันจากหน้า Admin มาตั้งเป็นค่า default ให้ dropdown อัตโนมัติ
-    const currentSettingsResponse = await axios.get(`${API_BASE}/system/settings`, { headers: getAuthHeader() })
-    if (currentSettingsResponse.data) {
-      const { term, academic_year } = currentSettingsResponse.data
-      // 🔧 กัน error ถ้ายังไม่เคยตั้งค่าภาคเรียนไว้เลย (term เป็น null)
-      if (term && academic_year) {
-        // แปลงค่าให้ตรงกับ Value ของ `<option>` ในหน้าต่าง UI
-        if (term.toLowerCase() === 'summer') {
-          selectedSemester.value = 'summer'
-        } else {
-          selectedSemester.value = `${term}/${academic_year}`
-        }
-        console.log('ระบบโหลดภาคเรียนเริ่มต้นอัตโนมัติสำเร็จ:', selectedSemester.value)
-      }
-    }
-
     // ดึงประวัติภาคเรียนทั้งหมดมาทำ dropdown ตัวเลือก
+    // 🟢 [แก้ไข] เดิมตรงนี้มีก้อนโค้ดที่ดึง system_settings มาแล้วตั้ง selectedSemester
+    // อัตโนมัติเป็นภาคเรียนปัจจุบันทุกครั้งที่โหลดหน้า ทำให้ตารางไม่ได้เริ่มจาก "แสดงทุกภาคเรียน"
+    // ตามที่ต้องการ ตัดออกไป ให้ค่าเริ่มต้นเป็น '' (แสดงทุกภาคเรียน) เสมอตอนเข้าหน้านี้ครั้งแรก
     const response = await axios.get(`${API_BASE}/system/settings/terms`, { headers: getAuthHeader() })
     if (response.data && Array.isArray(response.data.data)) {
       return response.data.data.map(t => `${t.term}/${t.academic_year}`)
@@ -303,9 +294,13 @@ const deleteLog = async (id) => {
 
 onMounted(async () => {
   currentUserId.value = getUserIdFromToken()
-  // รันคู่ขนานรวดเร็ว (ตัด fetchSystemSettings ออกเพราะเป็นฟังก์ชันซ้ำกับ fetchLogs
-  // ทั้งคู่เขียนทับ rawLogs.value เหมือนกัน เรียกพร้อมกันมีแต่จะแข่งกันเขียนทับข้อมูล)
-  await Promise.all([fetchDepartments(), fetchLogs()])
+  // 🟢 [แก้ไข] ครูไม่เห็นตัวกรองแผนกวิชาอยู่แล้ว เลยไม่จำเป็นต้องยิง fetchDepartments()
+  // เปลืองรอบ API ไปเปล่าๆ ยิงเฉพาะตอน login เป็นแอดมินเท่านั้น
+  const tasks = [fetchLogs()]
+  if (userRole.value === 'admin') {
+    tasks.push(fetchDepartments())
+  }
+  await Promise.all(tasks)
 })
 
 const filteredLogs = computed(() => {
@@ -334,8 +329,10 @@ const filteredLogs = computed(() => {
   if (searchQuery.value && searchQuery.value.trim() !== '') {
     const query = searchQuery.value.toLowerCase().trim()
     result = result.filter(log => {
+      const logTerm = log.semester || log.term || ''
       return (log.subject_code || '').toLowerCase().includes(query) || 
-             (log.subject_name || '').toLowerCase().includes(query)
+             (log.subject_name || '').toLowerCase().includes(query) ||
+             String(logTerm).toLowerCase().includes(query)
     })
   }
 
@@ -352,6 +349,17 @@ const toggleSortOrder = () => {
   sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
 }
 
+// 🟢 [เพิ่มใหม่] จัดรูปแบบ label ของตัวเลือกภาคเรียน — เดิมทุกตัวเลือกขึ้นนำหน้าด้วย
+// "ภาคเรียนที่ ..." ตายตัว ทำให้ตัวเลือก summer ขึ้นเป็น "ภาคเรียนที่ summer/2569" ซึ่งไม่ถูกต้อง
+// (summer ไม่ใช่ "ภาคเรียนที่" แต่เป็น "ภาคเรียนฤดูร้อน") ฟังก์ชันนี้แยกเช็คก่อนแสดงผล
+const formatTermLabel = (term) => {
+  const [semPart, yearPart] = String(term).split('/')
+  if (semPart && semPart.toLowerCase() === 'summer') {
+    return `ภาคเรียนฤดูร้อน (Summer) / ปีการศึกษา ${yearPart || ''}`
+  }
+  return `ภาคเรียนที่ ${semPart} / ปีการศึกษา ${yearPart || ''}`
+}
+
 const viewDetail = (id) => {
   if (!id) return
   router.push(`/logs/${id}`)
@@ -359,6 +367,37 @@ const viewDetail = (id) => {
 </script>
 
 <style scoped>
+
+/* 🟢 [แก้ไข] เดิม class นี้ถูกใช้ใน template (thead) แต่ไม่เคยถูกประกาศ style ไว้เลย
+   ทำให้ไม่มีพื้นหลังสีให้ตัดกับ text-white ที่ใส่ไว้ -> ตัวหนังสือขาวบนพื้นขาว มองไม่เห็น
+   หัวตารางเลยดูเหมือนหายไปทั้งแถว */
+.custom-thead {
+  background: linear-gradient(90deg, #1e7e34, #145623);
+}
+
+/* 🟢 [แก้ไข] เดิม class นี้ถูกใช้ใน template (tr ของแต่ละแถวข้อมูล) แต่ไม่เคยถูกประกาศ style
+   ไว้เลยเช่นกัน ทำให้ไม่มีเส้นแบ่งแถวหรือเงาตอน hover ตามที่ตั้งใจไว้ */
+.table-row-item {
+  border-bottom: 1px solid #f1f5f9;
+}
+.table-row-item:last-child {
+  border-bottom: none;
+}
+.table-row-item:hover {
+  background-color: #f8fafc;
+  box-shadow: inset 0 0 0 9999px rgba(30, 126, 52, 0.03);
+}
+.table-row-item:nth-child(even) {
+  background-color: #fafafa;
+}
+.table-row-item:nth-child(even):hover {
+  background-color: #f1f5f9;
+}
+
+.custom-styled-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
 
 .app-container, 
 .app-container *,

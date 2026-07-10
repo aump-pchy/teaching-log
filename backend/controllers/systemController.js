@@ -67,7 +67,18 @@ exports.getTerms = async (req, res) => {
     const result = await pool.query(
       'SELECT * FROM academic_terms ORDER BY academic_year ASC, term ASC'
     )
-    return res.json({ success: true, data: result.rows })
+
+    // 🟢 [แก้ไข] แนบบอกด้วยว่าแถวไหนคือ "ภาคเรียนปัจจุบัน" อยู่ตอนนี้ (เทียบกับ system_settings)
+    // เพื่อให้หน้าบ้านไฮไลต์/ปิดปุ่ม "ตั้งเป็นปัจจุบัน" สำหรับแถวที่เป็นปัจจุบันอยู่แล้วได้
+    const currentResult = await pool.query('SELECT term, academic_year FROM system_settings WHERE id = 1')
+    const current = currentResult.rows[0] || null
+
+    const data = result.rows.map(row => ({
+      ...row,
+      is_current: !!(current && String(row.term) === String(current.term) && String(row.academic_year) === String(current.academic_year))
+    }))
+
+    return res.json({ success: true, data })
   } catch (error) {
     console.error('Error fetching terms:', error)
     return res.status(500).json({ message: 'ดึงข้อมูลภาคเรียนล้มเหลว' })
@@ -75,6 +86,10 @@ exports.getTerms = async (req, res) => {
 }
 
 // 💾 เปิดภาคเรียนใหม่แบบเพิ่มแถว (POST /api/system/settings/terms)
+// 🟢 [แก้ไข] เดิมพอเพิ่มภาคเรียนใหม่ปุ๊บ ระบบจะตั้งเป็น "ภาคเรียนปัจจุบัน" ให้ทันทีอัตโนมัติ
+// ทำให้ตอนสร้างบันทึกใหม่ ดันไปยึดค่าล่าสุดที่เพิ่ม ทั้งที่ผู้ใช้อาจจะแค่อยาก "เตรียม" ภาคเรียน
+// ไว้ล่วงหน้าเฉยๆ ยังไม่อยากให้เป็นภาคเรียนที่ใช้งานจริง ตอนนี้แค่เพิ่มเข้าประวัติ (academic_terms)
+// เท่านั้น ไม่แตะ system_settings เลย ต้องกด "ตั้งเป็นภาคเรียนปัจจุบัน" ที่รายการด้านล่างเอง
 exports.addTerm = async (req, res) => {
   const { current_semester, academic_year } = req.body
 
@@ -93,24 +108,58 @@ exports.addTerm = async (req, res) => {
       return res.status(400).json({ success: false, message: 'ภาคเรียนและปีการศึกษานี้มีในระบบแล้วค่ะ!' })
     }
 
-    // Insert แถวใหม่ สวยๆ สะสมแต้ม (เก็บประวัติ)
+    // Insert แถวใหม่ สวยๆ สะสมแต้ม (เก็บประวัติ) — ไม่แตะ system_settings แล้ว
     const insertResult = await pool.query(
       'INSERT INTO academic_terms (term, academic_year) VALUES ($1, $2) RETURNING *',
       [current_semester, academic_year]
     )
 
-    // 🟢 จุดสำคัญ: ตอนเปิดภาคเรียนใหม่ ต้องอัปเดต "ภาคเรียนปัจจุบัน" ใน system_settings (id = 1)
-    // ด้วย ไม่งั้น createLog() จะยังฝัง semester เดิมซ้ำๆ ลงบันทึกใหม่ตลอดไป เพราะมันอ่านค่าจาก
-    // system_settings เท่านั้น -> ตัวเลือกภาคเรียนใน LogList เลยไม่ขยับ (ไม่แตะ head_curriculum/
-    // deputy_academic/director เลย เพื่อไม่ให้ชนกับ updateExecutives ด้านบน)
-    await pool.query(
-      'UPDATE system_settings SET term = $1, academic_year = $2 WHERE id = 1',
-      [current_semester, academic_year]
-    )
-
-    return res.json({ success: true, message: 'เปิดภาคเรียนใหม่สำเร็จ', data: insertResult.rows })
+    return res.json({ success: true, message: 'เพิ่มภาคเรียนเข้าประวัติสำเร็จ', data: insertResult.rows })
   } catch (error) {
     console.error('Error adding term:', error)
     return res.status(500).json({ success: false, message: 'เปิดภาคเรียนใหม่ล้มเหลว: ' + error.message })
+  }
+}
+
+// 🟢 [เพิ่มใหม่] ตั้งภาคเรียนที่เลือกจากประวัติ ให้เป็น "ภาคเรียนปัจจุบัน" ใน system_settings
+// (POST /api/system/settings/terms/:id/set-current) — จุดเดียวเท่านั้นที่จะอัปเดตค่าที่ createLog()
+// ใช้ฝังลงบันทึกใหม่ ทำให้ผู้ใช้มั่นใจได้ว่าค่าที่ระบบดึงไปใช้ตรงกับที่ "เลือกเอง" จริงๆ ไม่มีดึงมั่ว
+exports.setCurrentTerm = async (req, res) => {
+  const { id } = req.params
+  try {
+    const termResult = await pool.query('SELECT * FROM academic_terms WHERE id = $1', [id])
+    const term = termResult.rows[0]
+
+    if (!term) {
+      return res.status(404).json({ success: false, message: 'ไม่พบภาคเรียนที่ต้องการตั้งค่า' })
+    }
+
+    await pool.query(
+      'UPDATE system_settings SET term = $1, academic_year = $2 WHERE id = 1',
+      [term.term, term.academic_year]
+    )
+
+    return res.json({
+      success: true,
+      message: `ตั้งภาคเรียนที่ ${term.term}/${term.academic_year} เป็นภาคเรียนปัจจุบันสำเร็จ`
+    })
+  } catch (error) {
+    console.error('Error setting current term:', error)
+    return res.status(500).json({ success: false, message: 'ตั้งค่าภาคเรียนปัจจุบันล้มเหลว: ' + error.message })
+  }
+}
+
+// 🟢 [เพิ่มใหม่] ลบภาคเรียนออกจากประวัติ (DELETE /api/system/settings/terms/:id)
+exports.deleteTerm = async (req, res) => {
+  const { id } = req.params
+  try {
+    const result = await pool.query('DELETE FROM academic_terms WHERE id = $1 RETURNING *', [id])
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'ไม่พบภาคเรียนที่ต้องการลบ' })
+    }
+    return res.json({ success: true, message: 'ลบภาคเรียนออกจากประวัติสำเร็จ' })
+  } catch (error) {
+    console.error('Error deleting term:', error)
+    return res.status(500).json({ success: false, message: 'ลบภาคเรียนล้มเหลว: ' + error.message })
   }
 }
