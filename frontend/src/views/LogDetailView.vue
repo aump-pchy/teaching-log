@@ -350,7 +350,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // ─── Config ──────────────────────────────────────────
-const API = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}`
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}`
 
 const route  = useRoute()
 const router = useRouter()
@@ -497,8 +497,8 @@ function mapApiToRefs(data) {
   logData.value = {
     semester:       semPart  || '1',
     academic_year:  yearPart || '2569',
-    teacher_name:   data.users?.full_name || '',
-    department:     data.users?.departments?.name || '',
+    teacher_name:   data.teacher_name || data.users?.full_name || '',
+    department:     data.department_name || data.users?.departments?.name || '',
     week:           String(data.week || ''),
     date_from_full: formatFullDate(startParsed),
     date_to_full:   formatFullDate(endParsed),
@@ -509,7 +509,7 @@ function mapApiToRefs(data) {
     subject_code:   data.subject_code   || '',
     topic:          data.topic          || '',
     // ดึงชื่อหัวหน้าแผนกจาก departments.headerName โดยตรง ไม่ใช้ field พิมพ์มือ
-    supervisor_name: data.users?.departments?.headerName || '',
+    supervisor_name: data.head_curriculum || data.users?.departments?.headerName || '',
     head_curriculum: data.head_curriculum || '',
     deputy_academic: data.deputy_academic || '',
     director:        data.director        || '',
@@ -561,25 +561,25 @@ function mapApiToRefs(data) {
     solution:  data.solution || ''
   }
 
-  // ── appendixImages — จัด section ตาม field section ที่ backend ส่งมา ──
+  // ── appendixImages ──────────────────────────────────────────────────────
+  // แบ่งตาม section: 'format', 'method', 'media', 'app_eval', 'other'
+  // ถ้าไม่มี section ใดเลย → รวมรูปทั้งหมดไว้ section1 (กรณี upload ไม่ระบุ section)
   const imgs = Array.isArray(data.images) ? data.images : []
-  const bySection = (key) => imgs
-    .filter(i => i.section === key)
-    .map(i => ({ id: i.id, desc: i.caption || '', url: i.signed_url || null }))
+  const toImg = (i) => ({ id: i.id, desc: i.caption || '', url: i.signed_url || null })
+  const bySection = (key) => imgs.filter(i => i.section === key).map(toImg)
 
-  appendixImages.value = {
-    section1:   bySection('format'),
-    section2:   bySection('method'),
-    section3:   bySection('media'),
-    section4_5: bySection('app_eval')
+  const s1 = bySection('format')
+  const s2 = bySection('method')
+  const s3 = bySection('media')
+  const s4 = bySection('app_eval')
+
+  const hasAnySectioned = s1.length || s2.length || s3.length || s4.length
+  if (!hasAnySectioned && imgs.length > 0) {
+    // รูปทั้งหมดไม่มี section → แสดงรวมใน section1
+    appendixImages.value = { section1: imgs.map(toImg), section2: [], section3: [], section4_5: [] }
+  } else {
+    appendixImages.value = { section1: s1, section2: s2, section3: s3, section4_5: s4 }
   }
-
-  // ถ้า section ไหนไม่มีรูป ให้มี placeholder 2 ช่อง
-  const placeholder = () => [{ id: null, desc: '', url: null }, { id: null, desc: '', url: null }]
-  if (!appendixImages.value.section1.length)   appendixImages.value.section1   = placeholder()
-  if (!appendixImages.value.section2.length)   appendixImages.value.section2   = placeholder()
-  if (!appendixImages.value.section3.length)   appendixImages.value.section3   = placeholder()
-  if (!appendixImages.value.section4_5.length) appendixImages.value.section4_5 = placeholder()
 }
 
 // ─── GET /api/logs/:id ────────────────────────────────

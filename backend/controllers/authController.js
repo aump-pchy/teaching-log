@@ -84,13 +84,10 @@ async function login(req, res) {
 }
 
 async function logout(req, res) {
-  
-return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับ' })
+  // JWT-based logout — client ลบ token ออกเองฝั่ง frontend ได้เลย
+  return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับอ้าย' })
 }
 
-// 🔧 GET /api/auth/me — LogFormView.vue เรียกใช้อยู่แล้วแต่ route/ฟังก์ชันนี้ไม่เคยมีอยู่จริง
-// ทำให้ 404 ทุกครั้งที่เปิดหน้าเพิ่ม/แก้บันทึกการสอน
-// ⚠️ frontend อ่านค่าจาก data.full_name ตรงๆ (ไม่ได้ซ้อนใน data.user) จึงคืนค่าแบบแบนราบ (flat)
 async function getMe(req, res) {
   try {
     const result = await pool.query(
@@ -103,13 +100,15 @@ async function getMe(req, res) {
       return res.status(404).json({ error: 'ไม่พบข้อมูลผู้ใช้นี้ในระบบ' })
     }
 
-    return res.json({
-      id: userData.id,
-      email: userData.email,
-      full_name: userData.full_name,
-      role: userData.role,
-      department_id: userData.department_id
-    })
+    // ดึงข้อมูลครบจากฐานข้อมูล (รวม full_name ที่ไม่ได้ฝังใน token)
+    const result = await pool.query(
+      'SELECT id, email, full_name, role, department_id FROM users WHERE id = $1',
+      [req.user.id]
+    )
+    const user = result.rows[0]
+    if (!user) return res.status(404).json({ error: 'ไม่พบผู้ใช้งาน' })
+
+    return res.status(200).json(user)
   } catch (err) {
     console.error('GetMe Server Error:', err)
     return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์หลังบ้าน' })
@@ -138,7 +137,6 @@ async function forgotPassword(req, res) {
     const hashedPassword = await bcrypt.hash(newPassword, 10)
 
     await pool.query('UPDATE users SET password_hash = $1 WHERE email = $2', [hashedPassword, normalizedEmail])
-
     await sendPasswordResetEmail(user.email, newPassword)
 
     return res.json({ message: 'ระบบส่งรหัสผ่านใหม่ไปยังอีเมลของเรียบร้อยแล้วครับ กรุณาตรวจสอบกล่องจดหมาย (รวมถึงถังขยะ/สแปม)' })

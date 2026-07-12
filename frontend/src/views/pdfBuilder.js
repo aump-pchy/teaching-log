@@ -76,7 +76,6 @@ function wrapText(pdf, text, maxWidth, fontSize) {
 // ════════════════════════════════════════════
 function drawPage1(pdf, logData, methodsData) {
   let y = MARGIN_T + 5
-console.log('logData:', logData)
   // หัวเรื่อง
   pdf.setFont('Sarabun', 'bold')
   pdf.setFontSize(13)
@@ -486,27 +485,42 @@ export async function buildLogPDF({ logData, methodsData, resultsData, appendixI
   newPage(pdf)
   drawPage4(pdf)
 
-  // หน้า 5 — ภาคผนวก ข้อ 1-2
-  newPage(pdf)
-  await drawAppendixPage(pdf, logData, {
-    title: 'หลักฐานการจัดการเรียนรู้ วิชาในสถานประกอบการ',
-    showMeta: true,
-    blocks: [
-      { heading: '1. รูปแบบการจัดการเรียนรู้', images: appendixImages.section1 },
-      { heading: '2. วิธีการให้เนื้อหา', images: appendixImages.section2 }
-    ]
-  }, appendixImages)
 
-  // หน้า 6 — ภาคผนวก ข้อ 3-5
-  newPage(pdf)
-  await drawAppendixPage(pdf, logData, {
-    title: 'หลักฐานการจัดการเรียนรู้ วิชาในสถานประกอบการ (ต่อ)',
-    showMeta: false,
-    blocks: [
-      { heading: '3. สื่อที่ใช้/แหล่งเรียนรู้', images: appendixImages.section3 },
-      { heading: '4. โปรแกรม/แอปพลิเคชัน และ 5. การวัดผล', images: appendixImages.section4_5 }
-    ]
-  }, appendixImages)
+  // ตรวจว่ารูปถูกรวมไว้ใน section1 ทั้งหมด หรือแยก section จริงๆ
+  const hasMultiSection = appendixImages.section2.some(i => i.url) ||
+                          appendixImages.section3.some(i => i.url) ||
+                          appendixImages.section4_5.some(i => i.url)
+
+  if (!hasMultiSection && appendixImages.section1.some(i => i.url)) {
+    // รูปทั้งหมดอยู่ใน section1 → แสดงรวมในหน้าเดียว
+    newPage(pdf)
+    await drawAppendixPage(pdf, logData, {
+      title: 'หลักฐานการจัดการเรียนรู้ วิชาในสถานประกอบการ',
+      showMeta: true,
+      blocks: [{ heading: 'หลักฐานประกอบการจัดการเรียนรู้', images: appendixImages.section1 }]
+    }, appendixImages)
+  } else {
+    // แยก section → แสดงแยกหน้าตามปกติ
+    newPage(pdf)
+    await drawAppendixPage(pdf, logData, {
+      title: 'หลักฐานการจัดการเรียนรู้ วิชาในสถานประกอบการ',
+      showMeta: true,
+      blocks: [
+        { heading: '1. รูปแบบการจัดการเรียนรู้', images: appendixImages.section1 },
+        { heading: '2. วิธีการให้เนื้อหา', images: appendixImages.section2 }
+      ]
+    }, appendixImages)
+
+    newPage(pdf)
+    await drawAppendixPage(pdf, logData, {
+      title: 'หลักฐานการจัดการเรียนรู้ วิชาในสถานประกอบการ (ต่อ)',
+      showMeta: false,
+      blocks: [
+        { heading: '3. สื่อที่ใช้/แหล่งเรียนรู้', images: appendixImages.section3 },
+        { heading: '4. โปรแกรม/แอปพลิเคชัน และ 5. การวัดผล', images: appendixImages.section4_5 }
+      ]
+    }, appendixImages)
+  }
 
   return pdf
 }
