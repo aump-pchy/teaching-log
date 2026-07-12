@@ -79,7 +79,14 @@ async function login(req, res) {
 }
 
 async function logout(req, res) {
-  return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับ' })
+  try {
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
+    return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับอ้าย' })
+  } catch (err) {
+    console.error('Logout Server Error:', err)
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการออกจากระบบ' })
+  }
 }
 const crypto = require('crypto')
 const { sendPasswordResetEmail } = require('../utils/mailer')
