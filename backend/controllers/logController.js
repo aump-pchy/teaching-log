@@ -43,8 +43,12 @@ async function getAllLogs(req, res) {
       week: log.week,
       subject_code: log.subject_code,
       subject_name: log.subject_name,
+      // 🟢 [แก้ไข] เดิม endpoint นี้ไม่ส่ง semester กลับไปเลย (บั๊กเดียวกับที่เจอในฝั่ง Supabase ก่อนหน้านี้)
+      // ทำให้หน้าบ้าน (LogListView) หาค่า log.semester ไม่เจอ -> ตัวเลือกภาคเรียนว่างเปล่าตลอด
+      semester: log.semester,
       teacher_name: log.teacher_name || 'ไม่ระบุชื่อครู',
-      department_name: log.department_name || 'ไม่ระบุแผนกวิชา'
+      department_name: log.department_name || 'ไม่ระบุแผนกวิชา',
+      department_id: log.dept_id || null
     }))
 
     return res.status(200).json(formattedLogs)
@@ -105,10 +109,15 @@ async function getLogById(req, res) {
 
 /**
  * POST /api/logs
+ * สร้างบันทึกใหม่ ดึงรายชื่อผู้บริหารชุดปัจจุบัน + ภาคเรียนปัจจุบัน (Snapshot) จากตารางระบบกลาง
+ * มาฝังล็อกค้างไว้ใน Record ทันที (ยึด system_settings เป็นความจริงหนึ่งเดียวเสมอ ไม่สนใจ
+ * ค่า semester/term ที่หน้าฟอร์มอาจส่งมา เพราะฟอร์มเคยมีค่า default เก่าค้างและทำให้ปีผิดมาแล้ว)
  */
 async function createLog(req, res) {
   try {
     const {
+      semester,
+      term, // เผื่อกรณีหน้าบ้านส่งชื่อตัวแปรนี้มา (จะไม่ถูกใช้ถ้า system_settings มีค่าอยู่)
       week, date_from, date_to, subject_name, subject_code, topic,
       attendance, methods, content_methods, media, apps, evaluation,
       outcome_cognitive, outcome_psychomotor, outcome_affective, outcome_application,
@@ -116,23 +125,59 @@ async function createLog(req, res) {
     } = req.body
 
     if (!subject_name || !topic) {
-      return res.status(400).json({ error: 'subject_name and topic are required' })
+      return res.status(400).json({ error: 'จำเป็นต้องระบุชื่อวิชาและหัวข้อเรื่องที่สอน' })
+    }
+
+    // 🟢 [เพิ่มกลับเข้ามา] ดึงข้อมูลผู้บริหารและภาคเรียนปัจจุบันจากตารางระบบกลาง (id = 1)
+    // เวอร์ชันนี้ (pool.query) ไม่เคยมี logic นี้มาก่อน เลยไม่เคยบันทึกภาคเรียน/รายชื่อผู้บริหารลงเลย
+    let adminConfig = null
+    try {
+      const configResult = await pool.query('SELECT * FROM system_settings WHERE id = 1')
+      adminConfig = configResult.rows[0] || null
+    } catch (err) {
+      console.error('ไม่สามารถดึงข้อมูลจากระบบกลางได้:', err.message)
+    }
+
+    // ยึด system_settings เป็นหลักเสมอ ไม่ใช้ค่าจากฟอร์มถ้ามีค่าที่ระบบกลางอยู่แล้ว
+    let finalSemester
+    if (adminConfig && adminConfig.term && adminConfig.academic_year) {
+      finalSemester = `${adminConfig.term}/${adminConfig.academic_year}`
+    } else {
+      finalSemester = semester || term || '1/2569'
     }
 
     const result = await pool.query(`
       INSERT INTO teaching_logs (
-        user_id, week, date_from, date_to, subject_name, subject_code, topic,
+        user_id, semester, week, date_from, date_to, subject_name, subject_code, topic,
         attendance, methods, content_methods, media, apps, evaluation,
         outcome_cognitive, outcome_psychomotor, outcome_affective, outcome_application,
-        problem, solution
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+        problem, solution, head_curriculum, deputy_academic, director
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
       RETURNING *
     `, [
-      req.user.id, Number(week) || 1, date_from || '', date_to || '', subject_name,
-      subject_code || '', topic, JSON.stringify(attendance || []), JSON.stringify(methods || {}),
-      JSON.stringify(content_methods || {}), JSON.stringify(media || {}), JSON.stringify(apps || {}),
-      JSON.stringify(evaluation || {}), outcome_cognitive || '', outcome_psychomotor || '',
-      outcome_affective || '', outcome_application || '', problem || '', solution || ''
+      req.user.id,
+      finalSemester,
+      Number(week) || 1,
+      date_from || '',
+      date_to || '',
+      subject_name,
+      subject_code || '',
+      topic,
+      JSON.stringify(attendance || []),
+      JSON.stringify(methods || {}),
+      JSON.stringify(content_methods || {}),
+      JSON.stringify(media || {}),
+      JSON.stringify(apps || {}),
+      JSON.stringify(evaluation || {}),
+      outcome_cognitive || '',
+      outcome_psychomotor || '',
+      outcome_affective || '',
+      outcome_application || '',
+      problem || '',
+      solution || '',
+      adminConfig && adminConfig.head_curriculum ? String(adminConfig.head_curriculum) : null,
+      adminConfig && adminConfig.deputy_academic ? String(adminConfig.deputy_academic) : null,
+      adminConfig && adminConfig.director ? String(adminConfig.director) : null
     ])
 
     return res.status(201).json(result.rows[0])
@@ -160,8 +205,9 @@ async function updateLog(req, res) {
       return res.status(403).json({ error: 'ไม่มีสิทธิ์แก้ไขบันทึกการสอนของผู้อื่น' })
     }
 
+    // 🟢 semester รวมอยู่ใน allowedFields ด้วย เผื่อแอดมิน/ครูต้องแก้ภาคเรียนของบันทึกเก่าย้อนหลัง
     const allowedFields = [
-      'week', 'date_from', 'date_to', 'subject_name', 'subject_code', 'topic',
+      'semester', 'week', 'date_from', 'date_to', 'subject_name', 'subject_code', 'topic',
       'attendance', 'methods', 'content_methods', 'media', 'apps', 'evaluation',
       'outcome_cognitive', 'outcome_psychomotor', 'outcome_affective', 'outcome_application',
       'problem', 'solution'

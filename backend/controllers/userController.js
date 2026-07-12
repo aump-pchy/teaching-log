@@ -1,6 +1,7 @@
 const pool = require('../db/pool')
 const bcrypt = require('bcrypt')
 
+// 1. ดึงรายชื่อผู้ใช้งานทั้งหมด (admin เท่านั้น — เช็คสิทธิ์จาก route ผ่าน adminOnly แล้ว)
 exports.getAllUsers = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -55,7 +56,7 @@ exports.getUserById = async (req, res) => {
   }
 }
 
-// ⚠️ เช็คสิทธิ์ในนี้: admin แก้ได้ทุก field, คนอื่นแก้ได้แค่ของตัวเอง และแก้ได้แค่ full_name/email/password เท่านั้น
+// 3. อัปเดตข้อมูลผู้ใช้ — admin แก้ได้ทุก field, คนอื่นแก้ได้แค่ของตัวเองและแค่ full_name/email/password
 // (ต่อให้ frontend ถูก bypass ส่ง role หรือ department_id มา ก็จะถูกเมิน ไม่กระทบข้อมูลจริง)
 exports.updateUser = async (req, res) => {
   const { id } = req.params
@@ -104,6 +105,7 @@ exports.updateUser = async (req, res) => {
   }
 }
 
+// 4. ลบผู้ใช้งานออกจากระบบ (admin เท่านั้น — เช็คสิทธิ์จาก route ผ่าน adminOnly แล้ว)
 exports.deleteUser = async (req, res) => {
   const { id } = req.params
   try {
@@ -115,6 +117,7 @@ exports.deleteUser = async (req, res) => {
   }
 }
 
+// 5. สร้างผู้ใช้งานใหม่ (admin เท่านั้น — เช็คสิทธิ์จาก route ผ่าน adminOnly แล้ว)
 exports.createUser = async (req, res) => {
   try {
     const { email, password, full_name, role, department_id } = req.body

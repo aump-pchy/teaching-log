@@ -1,6 +1,8 @@
 const pool = require('../db/pool')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
+const { sendPasswordResetEmail } = require('../utils/mailer')
 
 const JWT_SECRET = process.env.JWT_SECRET
 const JWT_EXPIRES_IN = '90m'
@@ -62,6 +64,9 @@ async function login(req, res) {
       { expiresIn: JWT_EXPIRES_IN }
     )
 
+    // 🟢 [แก้ไข] เดิมใช้ authData.session.access_token ซึ่งเป็นโค้ดเก่าตกค้างจากสมัยที่ยัง
+    // ใช้ Supabase Auth — ตัวแปร authData ไม่มีอยู่จริงในฟังก์ชันนี้แล้ว (ReferenceError ทันที
+    // หลัง login สำเร็จ) ตอนนี้ JWT ถูกสร้างเองไว้ในตัวแปร token ด้านบนแล้ว ใช้ตัวนั้นแทน
     return res.json({
       token,
       user: {
@@ -79,17 +84,40 @@ async function login(req, res) {
 }
 
 async function logout(req, res) {
-  try {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับอ้าย' })
-  } catch (err) {
-    console.error('Logout Server Error:', err)
-    return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการออกจากระบบ' })
-  }
+  
+return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับ' })
 }
-const crypto = require('crypto')
-const { sendPasswordResetEmail } = require('../utils/mailer')
+
+// 🔧 GET /api/auth/me — LogFormView.vue เรียกใช้อยู่แล้วแต่ route/ฟังก์ชันนี้ไม่เคยมีอยู่จริง
+// ทำให้ 404 ทุกครั้งที่เปิดหน้าเพิ่ม/แก้บันทึกการสอน
+// ⚠️ frontend อ่านค่าจาก data.full_name ตรงๆ (ไม่ได้ซ้อนใน data.user) จึงคืนค่าแบบแบนราบ (flat)
+async function getMe(req, res) {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, full_name, role, department_id FROM users WHERE id = $1',
+      [req.user.id]
+    )
+    const userData = result.rows[0]
+
+    if (!userData) {
+      return res.status(404).json({ error: 'ไม่พบข้อมูลผู้ใช้นี้ในระบบ' })
+    }
+
+    return res.json({
+      id: userData.id,
+      email: userData.email,
+      full_name: userData.full_name,
+      role: userData.role,
+      department_id: userData.department_id
+    })
+  } catch (err) {
+    console.error('GetMe Server Error:', err)
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์หลังบ้าน' })
+  }
+
+  return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับ' })
+
+}
 
 async function forgotPassword(req, res) {
   try {
@@ -113,11 +141,11 @@ async function forgotPassword(req, res) {
 
     await sendPasswordResetEmail(user.email, newPassword)
 
-    return res.json({ message: 'ระบบส่งรหัสผ่านใหม่ไปยังอีเมลของเรียบร้อยแล้วครับ กรุณาตรวจสอบกล่องจดหมาย (รวมถึงถังขยะ/สแปม) ตัวอย่างรหัส clzzHvw' })
+    return res.json({ message: 'ระบบส่งรหัสผ่านใหม่ไปยังอีเมลของเรียบร้อยแล้วครับ กรุณาตรวจสอบกล่องจดหมาย (รวมถึงถังขยะ/สแปม)' })
   } catch (error) {
     console.error('ForgotPassword Error:', error)
     return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการส่งอีเมล กรุณาลองใหม่อีกครั้ง' })
   }
 }
 
-module.exports = { register, login, logout, forgotPassword }
+module.exports = { register, login, logout, forgotPassword, getMe }
