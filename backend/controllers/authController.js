@@ -94,28 +94,13 @@ async function getMe(req, res) {
       'SELECT id, email, full_name, role, department_id FROM users WHERE id = $1',
       [req.user.id]
     )
-    const userData = result.rows[0]
-
-    if (!userData) {
-      return res.status(404).json({ error: 'ไม่พบข้อมูลผู้ใช้นี้ในระบบ' })
-    }
-
-    // ดึงข้อมูลครบจากฐานข้อมูล (รวม full_name ที่ไม่ได้ฝังใน token)
-    const result = await pool.query(
-      'SELECT id, email, full_name, role, department_id FROM users WHERE id = $1',
-      [req.user.id]
-    )
     const user = result.rows[0]
     if (!user) return res.status(404).json({ error: 'ไม่พบผู้ใช้งาน' })
-
     return res.status(200).json(user)
   } catch (err) {
     console.error('GetMe Server Error:', err)
     return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์หลังบ้าน' })
   }
-
-  return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับ' })
-
 }
 
 async function forgotPassword(req, res) {

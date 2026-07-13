@@ -1,103 +1,86 @@
--- ================= DEPARTMENTS =================
-CREATE TABLE departments (
+-- Teaching Log Schema
+-- วิทยาลัยเทคนิคเลย
+
+CREATE TABLE IF NOT EXISTS public.departments (
   id SERIAL PRIMARY KEY,
-  code VARCHAR(20) UNIQUE NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  "headerName" VARCHAR(255),
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  code character varying NOT NULL UNIQUE,
+  name text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  "headerName" text
 );
 
--- ================= USERS =================
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS public.users (
   id SERIAL PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  full_name VARCHAR(255) NOT NULL,
-  role VARCHAR(20) NOT NULL DEFAULT 'teacher',
-  department_id INTEGER REFERENCES departments(id),
-  is_approved BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  auth_id VARCHAR(255)
+  email character varying NOT NULL UNIQUE,
+  password_hash text NOT NULL,
+  full_name text NOT NULL,
+  department_id integer REFERENCES public.departments(id),
+  role character varying NOT NULL DEFAULT 'teacher'
+    CHECK (role IN ('teacher', 'admin')),
+  created_at timestamp with time zone DEFAULT now(),
+  is_approved boolean DEFAULT false,
+  auth_id uuid
 );
 
--- ================= SYSTEM SETTINGS =================
-CREATE TABLE system_settings (
+CREATE TABLE IF NOT EXISTS public.teaching_logs (
   id SERIAL PRIMARY KEY,
-  term VARCHAR(20),
-  academic_year VARCHAR(20),
-  head_curriculum VARCHAR(255),
-  deputy_academic VARCHAR(255),
-  director VARCHAR(255),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  user_id integer NOT NULL REFERENCES public.users(id),
+  semester character varying NOT NULL DEFAULT '1/2569',
+  week integer NOT NULL,
+  date_from text NOT NULL,
+  date_to text NOT NULL,
+  subject_name text NOT NULL,
+  subject_code character varying NOT NULL,
+  topic text NOT NULL,
+  attendance jsonb NOT NULL DEFAULT '[]',
+  methods jsonb NOT NULL DEFAULT '{}',
+  content_methods jsonb NOT NULL DEFAULT '{}',
+  media jsonb NOT NULL DEFAULT '{}',
+  apps jsonb NOT NULL DEFAULT '{}',
+  evaluation jsonb NOT NULL DEFAULT '{}',
+  outcome_cognitive text,
+  outcome_psychomotor text,
+  outcome_affective text,
+  outcome_application text,
+  problem text,
+  solution text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  head_curriculum character varying,
+  deputy_academic character varying,
+  director character varying
 );
 
--- ================= ACADEMIC TERMS (ประวัติภาคเรียน/ปีการศึกษาที่เคยเปิดทั้งหมด) =================
--- 🔧 [เพิ่มใหม่] ตารางนี้หายไปจาก schema เดิม แต่ systemController.js (getTerms/addTerm)
--- และหน้า AdminConfigView.vue เรียกใช้งานอยู่จริง ทำให้เจอ error 42P01
--- "relation academic_terms does not exist" ตอนกด /admin/config
-CREATE TABLE academic_terms (
+CREATE TABLE IF NOT EXISTS public.teaching_log_images (
   id SERIAL PRIMARY KEY,
-  term VARCHAR(20) NOT NULL,
-  academic_year VARCHAR(20) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  log_id integer NOT NULL REFERENCES public.teaching_logs(id) ON DELETE CASCADE,
+  storage_path text NOT NULL,
+  caption text,
+  section character varying DEFAULT 'other'
+    CHECK (section IN ('format','method','media','app_eval','other')),
+  sort_order integer DEFAULT 0,
+  uploaded_at timestamp with time zone DEFAULT now()
 );
 
--- ================= TEACHING LOGS (ชื่อตารางตรงกับที่ logController.js เรียก) =================
-CREATE TABLE teaching_logs (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id),
-  semester VARCHAR(20),
-  week INTEGER,
-  date_from VARCHAR(50),
-  date_to VARCHAR(50),
-  subject_name VARCHAR(255),
-  subject_code VARCHAR(50),
-  topic TEXT,
-  attendance JSONB,
-  methods JSONB,
-  content_methods JSONB,
-  media JSONB,
-  apps JSONB,
-  evaluation JSONB,
-  outcome_cognitive TEXT,
-  outcome_psychomotor TEXT,
-  outcome_affective TEXT,
-  outcome_application TEXT,
-  problem TEXT,
-  solution TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  head_curriculum VARCHAR(255),
-  deputy_academic VARCHAR(255),
-  director VARCHAR(255)
+CREATE TABLE IF NOT EXISTS public.system_settings (
+  id bigint NOT NULL DEFAULT 1,
+  term text NOT NULL,
+  academic_year text NOT NULL,
+  head_curriculum text NOT NULL,
+  deputy_academic text NOT NULL,
+  director text NOT NULL,
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc', now()),
+  CONSTRAINT system_settings_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE teaching_log_images (
-  id SERIAL PRIMARY KEY,
-  log_id INTEGER REFERENCES teaching_logs(id) ON DELETE CASCADE,
-  storage_path VARCHAR(500),
-  caption TEXT,
-  section VARCHAR(50),
-  sort_order INTEGER DEFAULT 0,
-  uploaded_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS public.academic_terms (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  term text NOT NULL,
+  academic_year text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc', now())
 );
 
--- ================= SEED DATA =================
-INSERT INTO departments (code, name, "headerName") VALUES
-  ('IT', 'เทคโนโลยีสารสนเทศ', 'แผนกเทคโนโลยีสารสนเทศ'),
-  ('AI', 'เทคโนโลยี AI', 'แผนกเทคโนโลยี AI'),
-  ('EE', 'ไฟฟ้า', 'แผนกไฟฟ้า'),
-  ('ME', 'ช่างกล', 'แผนกช่างกล');
-
-INSERT INTO system_settings (id, term, academic_year) VALUES (1, '1', '2569');
-
--- ให้ตรงกับภาคเรียนเริ่มต้นที่ตั้งไว้ใน system_settings ด้านบน
-INSERT INTO academic_terms (term, academic_year) VALUES ('1', '2569');
-
--- password ของทุกคนคือ "password123" (แฮชด้วย bcrypt ไว้ล่วงหน้าแล้ว)
-INSERT INTO users (email, password_hash, full_name, role, department_id, is_approved) VALUES
-  ('admin@loeitc.ac.th', '$2b$10$Wr9Q./U3EY1J2aDcsL6/nuKqwU9fFmAJ2mhsueiB9F04jgUVkoLUW', 'ผู้ดูแลระบบ', 'admin', NULL, true),
-  ('aump@loeitc.ac.th', '$2b$10$Wr9Q./U3EY1J2aDcsL6/nuKqwU9fFmAJ2mhsueiB9F04jgUVkoLUW', 'นายอัมพร พชรกุล', 'teacher', 1, true),
-  ('nattapong@loeitc.ac.th', '$2b$10$Wr9Q./U3EY1J2aDcsL6/nuKqwU9fFmAJ2mhsueiB9F04jgUVkoLUW', 'นายณัฐพงษ์', 'teacher', 2, true),
-  ('prasit@loeitc.ac.th', '$2b$10$Wr9Q./U3EY1J2aDcsL6/nuKqwU9fFmAJ2mhsueiB9F04jgUVkoLUW', 'นายประสิทธิ์', 'teacher', 3, true),
-  ('somsak@loeitc.ac.th', '$2b$10$Wr9Q./U3EY1J2aDcsL6/nuKqwU9fFmAJ2mhsueiB9F04jgUVkoLUW', 'นายสมศักดิ์', 'teacher', 4, true);
+-- seed system_settings
+INSERT INTO public.system_settings (id, term, academic_year, head_curriculum, deputy_academic, director)
+VALUES (1, '1', '2569', 'นายประจิตร์ เลขตะระโก', 'ว่าที่ร้อยตรีชัชวาลย์ ป้อมสุวรรณ', 'นายศุภกฤต แกมนิรัตน์')
+ON CONFLICT (id) DO NOTHING;

@@ -105,12 +105,69 @@ exports.updateUser = async (req, res) => {
   }
 }
 
-// 4. ลบผู้ใช้งานออกจากระบบ (admin เท่านั้น — เช็คสิทธิ์จาก route ผ่าน adminOnly แล้ว)
+// 4a. เช็คข้อมูลก่อนลบ — ส่งกลับจำนวน logs ให้ frontend แสดง confirm dialog
+exports.checkDeleteUser = async (req, res) => {
+  const { id } = req.params
+  try {
+    if (req.user.id === Number(id)) {
+      return res.status(400).json({ error: 'ไม่สามารถลบบัญชีของตัวเองได้' })
+    }
+
+    const userResult = await pool.query(
+      'SELECT id, full_name, email FROM users WHERE id = $1', [id]
+    )
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบผู้ใช้งาน' })
+    }
+
+    const logCount = await pool.query(
+      'SELECT COUNT(*) FROM teaching_logs WHERE user_id = $1', [id]
+    )
+    const imageCount = await pool.query(
+      `SELECT COUNT(*) FROM teaching_log_images tli
+       JOIN teaching_logs tl ON tl.id = tli.log_id
+       WHERE tl.user_id = $1`, [id]
+    )
+
+    return res.status(200).json({
+      user: userResult.rows[0],
+      log_count:   parseInt(logCount.rows[0].count),
+      image_count: parseInt(imageCount.rows[0].count),
+      message: `จะลบข้อมูลทั้งหมดของ "${userResult.rows[0].full_name}" รวมบันทึกการสอน ${logCount.rows[0].count} รายการ และรูปภาพ ${imageCount.rows[0].count} รายการ`
+    })
+  } catch (error) {
+    console.error('Backend Error (checkDeleteUser):', error.message)
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาด' })
+  }
+}
+
+// 4b. ลบจริง — เรียกหลังจาก frontend ยืนยันแล้ว (admin เท่านั้น)
 exports.deleteUser = async (req, res) => {
   const { id } = req.params
   try {
+    if (req.user.id === Number(id)) {
+      return res.status(400).json({ error: 'ไม่สามารถลบบัญชีของตัวเองได้' })
+    }
+
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE id = $1', [id]
+    )
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'ไม่พบผู้ใช้งาน' })
+    }
+
+    // ลบตามลำดับ FK: images → logs → user
+    await pool.query(`
+      DELETE FROM teaching_log_images
+      WHERE log_id IN (
+        SELECT id FROM teaching_logs WHERE user_id = $1
+      )
+    `, [id])
+
+    await pool.query('DELETE FROM teaching_logs WHERE user_id = $1', [id])
     await pool.query('DELETE FROM users WHERE id = $1', [id])
-    return res.status(200).json({ message: 'ลบข้อมูลผู้ใช้งานออกจากระบบเรียบร้อยแล้ว' })
+
+    return res.status(200).json({ message: 'ลบข้อมูลผู้ใช้งานและบันทึกการสอนทั้งหมดเรียบร้อยแล้ว' })
   } catch (error) {
     console.error('Backend Error (deleteUser):', error.message)
     return res.status(500).json({ error: 'ไม่สามารถลบข้อมูลผู้ใช้งานรายนี้ได้' })

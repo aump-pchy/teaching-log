@@ -412,7 +412,7 @@ const deleteUser = async (id) => {
     return alert('จะลบบัญชี Admin ที่กำลังใช้งานอยู่ตอนนี้ไม่ได้นะ! 😂')
   }
 
-  if (!confirm('แน่ใจนะว่าต้องการจะลบผู้ใช้งานรายนี้ออกจากระบบบันทึกการสอน?')) return
+  if (!confirm('ลบผู้ใช้งานออกจากระบบ?\r\nข้อมูลบันทึกการสอนจะถูกลบด้วย')) return
   try {
     await axios.delete(`${API_URL}/users/${id}`)
     alert('ลบข้อมูลผู้ใช้งานเรียบร้อยแล้ว!')
