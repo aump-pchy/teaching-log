@@ -409,7 +409,7 @@ const handleApprove = async (user) => {
 
 const deleteUser = async (id) => {
   if (currentUser.value && currentUser.value.id === id) {
-    return alert('จะลบบัญชี Admin ที่กำลังใช้งานอยู่ตอนนี้ไม่ได้นะ! 😂')
+    return alert('ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่ตอนนี้ได้! 😂')
   }
 
   if (!confirm('ลบผู้ใช้งานออกจากระบบ?\r\nข้อมูลบันทึกการสอนจะถูกลบด้วย')) return
