@@ -28,8 +28,11 @@ const routes = [
 
   { path: '/departments', component: () => import('../views/DepartmentsView.vue'), meta: { requiresAuth: true } },
 
-  // default
-  { path: '/', component: () => import('../views/LandingView.vue') },
+  // 👥 หน้าผู้จัดทำ — ดูได้ทั้งคนที่ล็อกอินและยังไม่ล็อกอิน
+  { path: '/credits', component: () => import('../views/CreditsView.vue') },
+
+  // 🟢 default: เปลี่ยนจากหน้า Landing ให้เข้าหน้า Login ทันทีที่เข้าเว็บ
+  { path: '/', component: () => import('../views/LoginView.vue') },
 ]
 
 const router = createRouter({
@@ -41,7 +44,13 @@ const router = createRouter({
 router.beforeEach((to, from) => {
   const token = localStorage.getItem('token')
   const userRole = localStorage.getItem('role')
-  
+
+  // 🏠 ถ้าล็อกอินอยู่แล้ว แล้วกดกลับมาที่ '/' (เช่นปุ่ม "กลับหน้าหลัก")
+  //    อย่าโชว์หน้า Login ซ้ำ ให้เด้งไปหน้าบันทึกการสอนแทน
+  if (to.path === '/' && token) {
+    return '/logs'
+  }
+
   // เช็กว่าหน้าที่จะไปต้องการ Token ไหม แต่ผู้ใช้ไม่มี Token
   if (to.meta.requiresAuth && !token) {
     return '/login'

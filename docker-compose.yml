@@ -33,6 +33,10 @@ services:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=teaching_log
+    # 🟢 [แก้ไข] เดิมไม่มี ports ทำให้ต่อจากนอก Docker (เช่นตอนรัน backend ด้วย npm run dev
+    # ตรงๆ บนเครื่อง ไม่ได้รันผ่าน docker-compose) เข้าไม่ได้เลย เพิ่ม mapping ออกมาที่เครื่องจริง
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 

@@ -157,10 +157,9 @@ onMounted(async () => {
 const handleRegister = async () => {
   // 🎯 เพิ่มระบบเช็ครหัสผ่านให้ตรงกันก่อนส่ง (แถมความปลอดภัยให้ครับ)
   if (form.password !== form.confirmPassword) {
-    alert('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกันครับอ้าย!')
+    alert('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน')
     return
   }
-
   loading.value = true
   try {
     // 🎯 ดึงค่าผ่าน form.xxxx ให้ตรงกับตระกูล reactive ด้านบน

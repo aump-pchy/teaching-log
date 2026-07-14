@@ -9,8 +9,8 @@
       </div>
 
       <div class="hero-text">
-        <h1>บันทึกการสอน<br>ครบ จบ ในที่เดียว</h1>
-        <p>ระบบจัดการแบบบันทึกการจัดการเรียนการสอน<br>สำหรับรายวิชาในสถานประกอบการ ภาคเรียนที่ 1/2569</p>
+        <h1>บันทึกการสอนในสถานประกอบการ<br>ครบ จบ ในที่เดียว</h1>
+        <p>ระบบจัดการแบบบันทึกการจัดการเรียนการสอน<br>สำหรับรายวิชาในสถานประกอบการ </p>
       </div>
 
       <div class="feature-list">
@@ -25,6 +25,10 @@
         <div class="feature-item">
           <div class="feature-icon"><i class="ti ti-file-type-pdf"></i></div>
           <span>Export PDF พร้อมพิมพ์ทันที</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon"><i class="ti ti-file-type-pdf"></i></div>
+          <span>เพื่อการทำงานที่สมบูรณ์ กรุณาใช้ Google Chrome</span>
         </div>
       </div>
 
@@ -105,7 +109,7 @@
         </div>
 
         <div class="card-footer">
-          <p>หากพบปัญหาในการเข้าสู่ระบบ กรุณาติดต่อ<br><strong>งานพัฒนาหลัสูตรและการจัดการเรียนรู้</strong></p>
+          <p>หากพบปัญหาในการเข้าสู่ระบบ กรุณาติดต่อ<br><strong>งานพัฒนาหลักสูตรและการจัดการเรียนรู้</strong></p>
         </div>
       </div>
     </div>

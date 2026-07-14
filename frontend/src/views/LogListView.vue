@@ -1,161 +1,187 @@
 <template>
-  <div class="min-h-screen bg-[#f3f7f4] text-slate-700 p-6 font-sans tracking-wide antialiased app-container">
+  <div class="max-w-5xl mx-auto px-4 sm:px-0 space-y-4 my-6">
     
-    <div class="max-w-7xl mx-auto mb-6 bg-white p-6 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-100">
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div class="flex items-start gap-3.5">
-          <div class="bg-gradient-to-br from-[#0f543e] to-[#28a745] text-white p-3 rounded-2xl mt-0.5 hidden sm:block shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          </div>
-          <div>
-            <span class="text-xs font-bold text-[#1e7e34] tracking-widest block uppercase mb-0.5">วิทยาลัยเทคนิคเลย</span>
-            <h1 class="text-xl font-bold text-[#0f543e] tracking-tight">รายการบันทึกการจัดการเรียนการสอน</h1>
-            <p class="text-xs text-slate-400 mt-1 font-medium">แสดงผลข้อมูลบันทึกการสอนในสถานประกอบการแยกตามแผนกวิชา</p>
-          </div>
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="p-3 bg-[#1e7e34]/10 text-[#1e7e34] rounded-xl text-2xl select-none">
+          📖
         </div>
-
-        <div class="flex items-center gap-2.5 bg-[#f8faf8] p-2 rounded-xl border border-slate-200/50 w-full md:w-auto shadow-inner flex-wrap md:flex-nowrap">
-          
-          <div class="flex items-center gap-1.5 w-full md:w-64 border-r border-slate-200/60 pr-2">
-            <span class="text-xs font-bold text-slate-500 pl-2">🔍</span>
-            <input 
-              v-model="searchQuery"
-              type="text" 
-              placeholder="ค้นชื่อครู, รหัสวิชา, ชื่อวิชา..." 
-              class="bg-white border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-[#1e7e34] focus:border-[#1e7e34] block w-full p-2 font-medium shadow-sm outline-none"
-            />
-          </div>
-
-          <div class="flex items-center gap-1.5 w-full md:w-auto">
-            <label for="dept-filter" class="text-xs font-bold text-slate-500 whitespace-nowrap pl-2">
-              🏢 แผนก:
-            </label>
-            <div class="relative w-full md:w-44">
-              <select
-                id="dept-filter"
-                v-model="selectedDept"
-                class="bg-white border border-slate-200 text-slate-700 text-xs rounded-xl focus:ring-2 focus:ring-[#1e7e34]/20 focus:border-[#1e7e34] block w-full p-2.5 pr-8 font-semibold shadow-sm transition-all outline-none appearance-none cursor-pointer hover:border-slate-300"
-              >
-                <option value="">ทั้งหมดทุกแผนกวิชา</option>
-                <option v-for="(dept, index) in departments" :key="index" :value="dept">
-                  {{ dept }}
-                </option>
-              </select>
-              <span class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[10px] text-slate-400">▼</span>
-            </div>
-          </div>
-
+        <div>
+          <h1 class="text-xs font-bold text-slate-400 tracking-wide">วิทยาลัยเทคนิคลอยเด่น</h1>
+          <p class="text-xl font-black text-[#1e7e34] mt-0.5">รายการบันทึกการจัดการเรียนการสอน</p>
+          <p class="text-xs text-slate-400 font-medium mt-0.5">แสดงผลข้อมูลบันทึกการสอนในสถานประกอบการ</p>
         </div>
       </div>
-    </div>
-
-    <div class="max-w-7xl mx-auto mb-4 flex justify-start">
-      <div class="relative flex items-center bg-gradient-to-r from-[#0f543e] to-[#249143] text-white text-xs font-semibold rounded-full custom-select-wrapper">
-        <span class="pl-4 text-sm pointer-events-none z-10">📌</span>
+      
+      <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+        <div class="relative flex-1 md:w-64">
+          <input 
+            type="text" 
+            v-model="searchQuery"
+            placeholder="ค้นหารหัสวิชา, ชื่อวิชา, ภาคเรียน..." 
+            class="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:border-[#1e7e34] focus:ring-1 focus:ring-[#1e7e34] outline-none font-medium"
+          />
+          <span class="absolute left-3 top-2.5 text-slate-400 text-xs select-none">🔍</span>
+        </div>
         
         <select 
-          v-model="selectedSemester" 
-          class="bg-transparent text-white font-semibold cursor-pointer pl-2 pr-9 py-2 focus:outline-none appearance-none font-sans rounded-full z-10 w-full project-select-box"
+          v-if="userRole === 'admin'"
+          v-model="selectedDepartment"
+          class="border border-slate-200 rounded-xl py-2 px-3 text-xs bg-white outline-none focus:border-[#1e7e34] font-bold text-slate-600 cursor-pointer"
         >
-          <option value="1/2569" class="text-slate-700 bg-white font-semibold">ภาคเรียนที่ 1/2569</option>
-          <option value="2/2569" class="text-slate-700 bg-white font-semibold">ภาคเรียนที่ 2/2569</option>
-          <option value="summer" class="text-slate-700 bg-white font-semibold">ภาคเรียนฤดูร้อน (Summer)</option>
+          <option value="" style="color:#334155; background-color:#ffffff;">🏢 ทั้งหมดทุกแผนกวิชา</option>
+          <option 
+            v-for="dept in departments" 
+            :key="dept.id || dept.name" 
+            :value="dept.name"
+            style="color:#334155; background-color:#ffffff;"
+          >
+            {{ dept.name }}
+          </option>
         </select>
-
-        <span class="absolute right-4 pointer-events-none text-[9px] opacity-80 z-10">▼</span>
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-200/60 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full table-fixed border-collapse min-w-[850px]">
-          <thead class="bg-gradient-to-r from-[#0f543e] via-[#167053] to-[#1e7e34] text-white text-xs font-bold tracking-wider">
-            <tr>
-              <th class="py-4 px-4 text-center w-[10%] font-medium">สัปดาห์</th>
-              <th class="py-4 px-4 text-center w-[15%] font-medium">รหัสวิชา</th>
-              <th class="py-4 px-6 text-left w-[30%] font-medium">ชื่อวิชา</th>
-              <th class="py-4 px-4 text-left w-[20%] font-medium">ครูผู้สอน</th>
-              <th class="py-4 px-6 text-left w-[15%] font-medium">แผนกวิชา</th>
-              <th class="py-4 px-4 text-center w-[10%] font-medium">จัดการ</th>
-            </tr>
-          </thead>
+    <div class="flex flex-wrap items-center justify-start gap-2.5">
+      <select 
+        v-model="selectedSemester"
+        class="bg-gradient-to-r from-[#1e7e34] to-[#145623] text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-md hover:opacity-95 transition-all outline-none cursor-pointer border-none"
+      >
+        <option value="" style="color:#1e293b; background-color:#ffffff;">📌 แสดงทุกภาคเรียน</option>
+        <option 
+          v-for="term in termOptions" 
+          :key="term" 
+          :value="term"
+          style="color:#1e293b; background-color:#ffffff;"
+        >
+          {{ formatTermLabel(term) }}
+        </option>
+      </select>
 
-          <tbody class="divide-y divide-slate-100 text-xs sm:text-sm font-medium text-slate-600">
-            <template v-if="filteredLogs.length > 0">
-              <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-[#f2f9f5]/60 transition-colors">
-                
-                <td class="py-4 px-4 text-center font-bold text-[#0f543e] truncate text-sm">
-                  {{ log.week }}
-                </td>
-                
-                <td class="py-4 px-4 text-center truncate">
-                  <span class="font-mono text-xs bg-slate-50 text-slate-500 rounded-md px-2.5 py-1 border border-slate-200/50 font-medium tracking-tight">
-                    {{ log.subject_code }}
-                  </span>
-                </td>
-                
-                <td class="py-4 px-6 text-slate-800 truncate font-semibold" :title="log.subject_name">
-                  {{ log.subject_name }}
-                </td>
-                
-                <td class="py-4 px-4 text-slate-600 truncate font-medium" :title="log.teacher_name">
-                  {{ log.teacher_name }}
-                </td>
+      <button
+        type="button"
+        @click="toggleSortOrder"
+        class="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm hover:border-[#1e7e34] hover:text-[#1e7e34] transition-all cursor-pointer"
+        :title="sortOrder === 'desc' ? 'กำลังเรียง: ล่าสุด → เก่าสุด' : 'กำลังเรียง: เก่าสุด → ล่าสุด'"
+      >
+        <span>{{ sortOrder === 'desc' ? '⬇️' : '⬆️' }}</span>
+        <span>{{ sortOrder === 'desc' ? 'ล่าสุด → เก่าสุด' : 'เก่าสุด → ล่าสุด' }}</span>
+      </button>
+    </div>
 
-                <td class="py-4 px-6 text-slate-500 truncate" :title="log.department_name">
-                  <span class="inline-block px-2.5 py-0.5 bg-[#eaf4ef] text-[#0f543e] rounded-md text-[11px] font-bold border border-[#d6eae0]">
-                    {{ log.department_name }}
-                  </span>
-                </td>
-                
-                <td class="py-4 px-4 text-center">
-                  <button 
-                    @click="viewDetail(log.id)" 
-                    class="bg-gradient-to-r from-[#0f543e] to-[#1e7e34] text-white text-xs px-3.5 py-1.5 rounded-lg hover:brightness-110 font-semibold shadow-sm transition-all whitespace-nowrap active:scale-95 btn-detail"
-                  >
-                    ดูรายละเอียด
-                  </button>
-                </td>
-              </tr>
-            </template>
+
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm">
+      <div class="relative flex items-center justify-center w-14 h-14">
+        <div class="absolute inset-0 rounded-full border-[3.5px] border-emerald-100 border-t-[#1e7e34] animate-spin"></div>
+        <span class="text-2xl animate-pulse select-none">🌀</span>
+      </div>
+      <span class="mt-5 text-xs font-bold text-slate-400 tracking-wider flex items-center gap-1.5 animate-pulse">
+        ⏳ กำลังเรียกข้อมูลระบบ กรุณารอสักครู่...
+      </span>
+    </div>
+
+    <div v-else class="overflow-hidden border border-slate-100 rounded-2xl shadow-md bg-white">
+      <table class="custom-styled-table w-full text-left">
+        <thead class="custom-thead text-white text-sm font-extrabold select-none">
+          <tr>
+            <th class="py-4 px-4 w-[10%] text-center">ที่</th>
+            <th class="py-4 px-6 w-[55%]">วิชาและรหัสวิชา</th>
+            <th class="py-4 px-4 w-[18%] text-center">สัปดาห์สอน</th>
+            <th class="py-4 px-4 w-[17%] text-center">จัดการข้อมูล</th>
+          </tr>
+        </thead>
+        
+        <tbody class="text-slate-700 font-semibold">
+          <tr 
+            v-for="(log, index) in filteredLogs" 
+            :key="log.id || index"
+            class="table-row-item transition-all duration-150"
+          >
+            <td class="py-3 px-4 text-center font-black text-slate-400 text-base">
+              {{ index + 1 }}
+            </td>
             
-            <template v-else>
-              <tr>
-                <td colspan="6" class="py-16 text-center text-slate-400 font-medium">
-                  <div class="flex flex-col items-center justify-center gap-2">
-                    <span class="text-2xl">📭</span>
-                    <span class="text-xs tracking-normal">ไม่พบข้อมูลรายการบันทึกการสอนในระบบ</span>
-                  </div>
-                </td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </div>
+            <td class="py-3 px-6">
+              <div class="flex flex-col gap-1.5">
+                <div>
+                  <span class="inline-block text-[10px] font-bold text-[#1e7e34] bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">
+                    {{ log.subject_code || 'ไม่ระบุรหัสวิชา' }}
+                  </span>
+                </div>
+                <span class="font-extrabold text-slate-800 text-base block truncate" :title="log.subject_name">
+                  {{ log.subject_name || 'ไม่ระบุชื่อวิชา' }}
+                </span>
+              </div>
+            </td>
+            
+            <td class="py-3 px-4 text-center">
+              <span class="inline-flex items-center justify-center bg-emerald-50 text-[#1e7e34] border border-emerald-100/70 font-bold px-3.5 py-1.5 rounded-full text-xs shadow-sm">
+                สัปดาห์ที่ {{ log.week || log.teaching_week || '1' }}
+              </span>
+            </td>
+            
+            <td class="py-3 px-4 text-center">
+              <div class="flex items-center justify-center gap-4 select-none">
+                <button 
+                  @click="viewDetail(log.id)" 
+                  class="text-xl hover:scale-125 active:scale-95 transition-all transform duration-150 cursor-pointer"
+                  title="ดูรายละเอียด"
+                >
+                  🔍
+                </button>
+
+                
+
+                <button 
+                  v-if="userRole === 'admin' || log.teacher_name === currentTeacherName" 
+                  @click="deleteLog(log.id)" 
+                  class="text-xl hover:scale-125 active:scale-95 transition-all transform duration-150 cursor-pointer"
+                  title="ลบบันทึกข้อมูล"
+                >
+                  🗑️
+                </button>
+              </div>
+            </td>
+          </tr>
+          
+          <tr v-if="filteredLogs.length === 0">
+            <td colspan="4" class="py-20 text-center text-slate-400 font-bold text-sm">
+              📭 ไม่พบข้อมูลตารางตามเงื่อนไขที่เลือก
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router' 
 import axios from 'axios' 
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()
-const rawLogs = ref([])
 
-const selectedSemester = ref('') // 🌟 ตัวนี้จะเปลี่ยนค่าอัตโนมัติเมื่อดึงจากฐานข้อมูลสำเร็จ
-const isOpen = ref(false) 
-const departments = ["IT", "AI", "EE", "ME"]
-const selectedDept = ref("")
+const selectedSemester = ref('') 
+const selectedDepartment = ref('')
 const searchQuery = ref('')
+const sortOrder = ref('desc')
+const isLoading = ref(true)
+
+const departments = ref([]) 
+const rawLogs = ref([])
+const termOptions = ref([])
 
 const currentUserId = ref(null)
+const userRole = ref(localStorage.getItem('role') || '')
+const currentTeacherName = ref(localStorage.getItem('full_name') || '')
 
-// ใช้ VITE_API_URL จาก .env (ตอน build ผ่าน Docker จะถูกกำหนดเป็น /api ให้ผ่าน nginx proxy)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const getAuthHeader = () => {
+  const token = localStorage.getItem('token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token')
@@ -166,133 +192,177 @@ const getUserIdFromToken = () => {
     const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
     }).join(''))
-    
-    const decoded = JSON.parse(jsonPayload)
-    return decoded.id 
+    return JSON.parse(jsonPayload).id 
   } catch (error) {
-    console.error('แกะ Token ไม่สำเร็จ:', error)
     return null
   }
 }
 
-//  1. ฟังก์ชันดึง "ภาคเรียน/ปีการศึกษาปัจจุบัน" จากหลังบ้าน (พอร์ต 3000 ตามใจหนู)
-const fetchSystemSettings = async () => {
+const fetchTermHistory = async () => {
   try {
-    // ยิงไปดึงค่าคอนฟิกที่ตั้งจากหน้า Admin
-    const response = await axios.get('http://localhost:3000/api/system/settings')
-    if (response.data) {
-      const { term, academic_year } = response.data
-      
-      // แปลงค่าให้ตรงกับ Value ของ `<option>` ในหน้าต่าง UI
-      if (term.toLowerCase() === 'summer') {
-        selectedSemester.value = 'summer'
-      } else {
-        selectedSemester.value = `${term}/${academic_year}`
-      }
-      console.log(' ระบบโหลดภาคเรียนเริ่มต้นอัตโนมัติสำเร็จ:', selectedSemester.value)
+    const response = await axios.get(`${API_BASE}/system/settings/terms`, { headers: getAuthHeader() })
+    if (response.data && Array.isArray(response.data.data)) {
+      return response.data.data.map(t => `${t.term}/${t.academic_year}`)
     }
+    return []
   } catch (error) {
-    console.error('โหลดค่าระบบกลางล้มเหลว พ่นค่า Default ป้องกันพัง:', error)
-    selectedSemester.value = '1/2569' // ค่าสำรองเผื่อหลังบ้านดับ
+    console.error('โหลดประวัติภาคเรียนไม่สำเร็จ:', error)
+    return []
   }
 }
 
 const fetchLogs = async () => {
   try {
-    const url = selectedDept.value 
-      ? `${API_URL}/logs?dept=${selectedDept.value}` 
-      : `${API_URL}/logs`
-      
-    const token = localStorage.getItem('token') 
-    
-    const response = await axios.get(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    
+    const response = await axios.get(`${API_BASE}/logs`, { headers: getAuthHeader() })
     rawLogs.value = response.data
+
+    const termsFromLogs = rawLogs.value.map(log => log.semester || log.term || '')
+    const termsFromHistory = await fetchTermHistory()
+
+    termOptions.value = [...new Set([...termsFromLogs, ...termsFromHistory])]
+      .filter(Boolean)
+      .sort()
+    
   } catch (error) {
     console.error('ดึงข้อมูลรายการสอนไม่สำเร็จ:', error)
+  } finally {
+    setTimeout(() => { isLoading.value = false }, 350)
   }
 }
 
-// 2. สั่งรันเรียงคิวอย่างเป็นระบบเมื่อเปิดหน้าเว็บ
+const fetchDepartments = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/departments`, { headers: getAuthHeader() })
+    if (response.data) {
+      departments.value = response.data 
+    }
+  } catch (error) {
+    departments.value = [
+      { id: 'IT', name: 'เทคโนโลยีสารสนเทศ' },
+      { id: 'AI', name: 'เทคโนโลยีปัญญาประดิษฐ์' },
+      { id: 'EE', name: 'ไฟฟ้ากำลัง' },
+      { id: 'ME', name: 'เทคนิคการผลิต' }
+    ]
+  }
+}
+
+const deleteLog = async (id) => {
+  if (!confirm('📌 แน่ใจใช่ไหมว่าจะลบบันทึกรายการนี้ออกจากระบบจริง?')) return
+  try {
+    isLoading.value = true 
+    const response = await axios.delete(`${API_BASE}/logs/${id}`, { headers: getAuthHeader() })
+    if (response.status === 200 || response.data.success) {
+      alert('ลบข้อมูลบันทึกการสอนสำเร็จ! 🎉')
+      await fetchLogs() 
+    }
+  } catch (error) {
+    console.error('ลบข้อมูลไม่สำเร็จ:', error)
+    alert('สิทธิ์ในการลบปฏิเสธ หรือเซสชันหมดอายุ กรุณาล็อกอินใหม่อีกครั้งค่ะ!')
+    isLoading.value = false
+  }
+}
+
 onMounted(async () => {
   currentUserId.value = getUserIdFromToken()
-  
-  // โหลดเทอมปัจจุบันมาก่อน เพื่อให้ปุ่มขยับตาม จากนั้นค่อยดึงตารางข้อมูล
-  await fetchSystemSettings()
-  await fetchLogs()
-})
-
-watch(selectedDept, () => {
-  fetchLogs()
-})
-
-watch(selectedSemester, () => {
-  fetchLogs()
+  const tasks = [fetchLogs()]
+  if (userRole.value === 'admin') {
+    tasks.push(fetchDepartments())
+  }
+  await Promise.all(tasks)
 })
 
 const filteredLogs = computed(() => {
-  console.log("ID ของครูที่ล็อกอินอยู่ปัจจุบันคือ:", currentUserId.value)
-  
-  const userRole = localStorage.getItem('role')
-  const currentTeacherName = localStorage.getItem('full_name') 
-  
   let result = [...rawLogs.value]
   
-  if (userRole !== 'admin') {
-    if (currentTeacherName) {
-      result = result.filter(log => log.teacher_name === currentTeacherName)
-    }
+  if (userRole.value !== 'admin' && currentTeacherName.value) {
+    result = result.filter(log => log.teacher_name === currentTeacherName.value)
   }
   
-  // 2. ด่านกรองตามเทอม (ปรับตัวเปรียบเทียบให้ฉลาดและสมูทขึ้น ไม่หลุดคิว)
+  if (selectedDepartment.value) {
+    result = result.filter(log => {
+      const logDept = log.department_name || log.department || ''
+      return logDept.toLowerCase().includes(selectedDepartment.value.toLowerCase().trim())
+    })
+  }
+  
   if (selectedSemester.value) {
     result = result.filter(log => {
-      const logTerm = log.semester || log.term || '1/2569'
-      return logTerm.toLowerCase() === selectedSemester.value.toLowerCase()
+      const logTerm = log.semester || log.term || ''
+      return String(logTerm) === String(selectedSemester.value)
     })
   }
   
   if (searchQuery.value && searchQuery.value.trim() !== '') {
     const query = searchQuery.value.toLowerCase().trim()
     result = result.filter(log => {
-      const teacher = (log.teacher_name || '').toLowerCase()
-      const subCode = (log.subject_code || '').toLowerCase()
-      const subName = (log.subject_name || '').toLowerCase()
-      
-      return teacher.includes(query) || subCode.includes(query) || subName.includes(query)
+      const logTerm = log.semester || log.term || ''
+      return (log.subject_code || '').toLowerCase().includes(query) || 
+             (log.subject_name || '').toLowerCase().includes(query) ||
+             String(logTerm).toLowerCase().includes(query)
     })
   }
-  
+
+  result.sort((a, b) => {
+    const diff = (a.id || 0) - (b.id || 0)
+    return sortOrder.value === 'desc' ? -diff : diff
+  })
+
   return result
 })
+
+const toggleSortOrder = () => {
+  sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
+}
+
+const formatTermLabel = (term) => {
+  const [semPart, yearPart] = String(term).split('/')
+  if (semPart && semPart.toLowerCase() === 'summer') {
+    return `ภาคเรียนฤดูร้อน (Summer) / ปีการศึกษา ${yearPart || ''}`
+  }
+  return `ภาคเรียนที่ ${semPart} / ปีการศึกษา ${yearPart || ''}`
+}
 
 const viewDetail = (id) => {
   if (!id) return
   router.push(`/logs/${id}`)
-}
+} 
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('click', (e) => {
-    if (!e.target.closest('[v-data-dropdown]')) {
-      isOpen.value = false
-    }
-  })
+// 🟢 [เพิ่มใหม่] ฟังก์ชันนำทางไปยังหน้าแก้ไขข้อมูลบันทึกการสอน
+const editLog = (id) => {
+  if (!id) return
+  router.push(`/logs/${id}/edit`) // 🚀 ใช้ Vue Router เพื่อเปลี่ยนหน้าไปยังฟอร์มแก้ไข
 }
 </script>
 
 <style scoped>
-
+/* สไตล์คงเดิมตามของอาจารย์ครับ */
+.custom-thead {
+  background: linear-gradient(90deg, #1e7e34, #145623);
+}
+.table-row-item {
+  border-bottom: 1px solid #f1f5f9;
+}
+.table-row-item:last-child {
+  border-bottom: none;
+}
+.table-row-item:hover {
+  background-color: #f8fafc;
+  box-shadow: inset 0 0 0 9999px rgba(30, 126, 52, 0.03);
+}
+.table-row-item:nth-child(even) {
+  background-color: #fafafa;
+}
+.table-row-item:nth-child(even):hover {
+  background-color: #f1f5f9;
+}
+.custom-styled-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
 .app-container, 
 .app-container *,
-table, 
-tr, 
-th, 
-td, 
-input, 
-select, 
-button {
+table, tr, th, td, 
+input, select, button {
   font-family: 'Sarabun', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 .custom-select-wrapper {
@@ -303,7 +373,6 @@ button {
 .custom-select-wrapper:hover {
   box-shadow: -4px 7px 14px rgba(0, 0, 0, 0.2), -2px 4px 8px rgba(0, 0, 0, 0.12) !important;
 }
-
 .project-select-box option {
   font-family: 'Sarabun', sans-serif !important;
   background-color: #ffffff !important;
@@ -311,7 +380,6 @@ button {
   padding: 12px 16px !important;
   border-radius: 12px !important; 
 }
-
 select:focus {
   outline: none !important;
   box-shadow: none !important;
@@ -321,13 +389,9 @@ select:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .btn-detail {
   font-weight: 600 !important;
 }
-</style>
-
-<style>
 html, body {
   overflow-y: scroll !important;
 }
