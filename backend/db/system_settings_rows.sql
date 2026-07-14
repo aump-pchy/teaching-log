@@ -1,1 +1,0 @@
-INSERT INTO "public"."system_settings" ("id", "term", "academic_year", "head_curriculum", "deputy_academic", "director", "updated_at") VALUES (1, '2', '2569', 'นายประจิตร์ เลขตะระโก', ' ว่าที่ร้อยตรีชัชวาลย์ ป้อมสุวรรณ ', ' นายศุภกฤต แกมนิรัตน์ ', '2026-06-30 03:27:24.533717+00');
