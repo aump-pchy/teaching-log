@@ -24,9 +24,6 @@
           <span class="absolute left-3 top-2.5 text-slate-400 text-xs select-none">🔍</span>
         </div>
         
-        <!-- 🟢 [แก้ไข] บัญชีครูเห็นได้แค่บันทึกของตัวเองอยู่แล้ว (กรองที่ currentTeacherName
-             ด้านล่างใน filteredLogs) ตัวเลือก "แผนกวิชา" จึงไม่มีความหมายอะไรสำหรับครูเลย
-             แสดงเฉพาะตอน login เป็นแอดมินเท่านั้น -->
         <select 
           v-if="userRole === 'admin'"
           v-model="selectedDepartment"
@@ -46,9 +43,6 @@
     </div>
 
     <div class="flex flex-wrap items-center justify-start gap-2.5">
-      <!-- 🟢 [แก้ไข] เดิม <select> ได้ class text-white ทำให้ตัวเลือกในลิสต์ (dropdown popup)
-           ที่ browser render เป็นพื้นขาวปกติ ตัวหนังสือขาวเลยกลืนมองไม่เห็น
-           แก้โดยกำหนดสีตัวหนังสือ/พื้นหลังของแต่ละ <option> ตรงๆ ด้วย inline style -->
       <select 
         v-model="selectedSemester"
         class="bg-gradient-to-r from-[#1e7e34] to-[#145623] text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-md hover:opacity-95 transition-all outline-none cursor-pointer border-none"
@@ -64,7 +58,6 @@
         </option>
       </select>
 
-      <!-- 🟢 [เพิ่มใหม่] ปุ่มสลับลำดับ ล่าสุด↔เก่าสุด ไม่ต้องเลื่อนหาเอง -->
       <button
         type="button"
         @click="toggleSortOrder"
@@ -136,8 +129,11 @@
                 >
                   🔍
                 </button>
+
+                
+
                 <button 
-                  v-if="userRole === 'admin'" 
+                  v-if="userRole === 'admin' || log.teacher_name === currentTeacherName" 
                   @click="deleteLog(log.id)" 
                   class="text-xl hover:scale-125 active:scale-95 transition-all transform duration-150 cursor-pointer"
                   title="ลบบันทึกข้อมูล"
@@ -168,32 +164,20 @@ import axios from 'axios'
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()
 
-// 🔧 [แก้ไข] state ที่ template เรียกใช้จริงแต่ของเดิมไม่เคยประกาศไว้เลย
-// (selectedDepartment, termOptions, sortOrder, isLoading, rawLogs)
-// นี่คือสาเหตุของ "Property was accessed during render but is not defined on instance"
-// และ "ReferenceError: rawLogs is not defined" ใน console
-const selectedSemester = ref('') // 🌟 ตัวนี้จะเปลี่ยนค่าอัตโนมัติเมื่อดึงจากฐานข้อมูลสำเร็จ
+const selectedSemester = ref('') 
 const selectedDepartment = ref('')
 const searchQuery = ref('')
 const sortOrder = ref('desc')
 const isLoading = ref(true)
 
-const departments = ref([]) // 🔧 เดิมเป็น array ธรรมดา ทำให้ fetchDepartments().value ใช้ไม่ได้
+const departments = ref([]) 
 const rawLogs = ref([])
 const termOptions = ref([])
 
 const currentUserId = ref(null)
-// 🔧 [แก้ไข] template อ้างถึง userRole ในเงื่อนไข v-if="userRole === 'admin'"
-// และ computed filteredLogs อ้างถึง currentTeacherName แต่ของเดิมไม่มีตัวแปรนี้เลย
-// ⚠️ ตรงนี้ผมอิงจาก key 'role' และ 'name' ที่คาดว่า LoginView.vue เซฟไว้ตอนล็อกอิน
-// (จาก log "บันทึกสิทธิ์และชื่อเครื่องสำเร็จ: admin" ใน LoginView.vue:166)
-// ช่วยเปิด LoginView.vue เช็ค key ที่ใช้ setItem จริงให้ตรงกันด้วยนะครับ
 const userRole = ref(localStorage.getItem('role') || '')
-// ✅ [แก้ไข] ยืนยันแล้วจาก LogFormView.vue ว่า key จริงคือ 'full_name' ไม่ใช่ 'name' ตามที่เดาไว้ก่อนหน้า
 const currentTeacherName = ref(localStorage.getItem('full_name') || '')
 
-// 🔧 [เพิ่มใหม่] ฟังก์ชันกลางสำหรับสร้าง auth header เพราะเดิมมีการเรียกใช้ getAuthHeader()
-// ในหลายจุด (fetchTermHistory, fetchLogs, fetchDepartments, deleteLog) แต่ไม่เคยถูกประกาศไว้
 const getAuthHeader = () => {
   const token = localStorage.getItem('token')
   return token ? { Authorization: `Bearer ${token}` } : {}
@@ -214,15 +198,8 @@ const getUserIdFromToken = () => {
   }
 }
 
-// 🟢 [แก้ไข] ดึงรายชื่อภาคเรียนทั้งหมดจากประวัติภาคเรียนกลาง (academic_terms) ด้วย
-// ไม่ใช่พึ่งพาแค่ภาคเรียนที่ปรากฏในบันทึกที่มีอยู่แล้วอย่างเดียว เพราะภาคเรียนที่เพิ่งเปิดใหม่
-// อาจยังไม่มีบันทึกการสอนของใครเลยสักรายการ ตัวเลือกจะไม่โผล่ถ้าอิงจาก log เท่านั้น
 const fetchTermHistory = async () => {
   try {
-    // ดึงประวัติภาคเรียนทั้งหมดมาทำ dropdown ตัวเลือก
-    // 🟢 [แก้ไข] เดิมตรงนี้มีก้อนโค้ดที่ดึง system_settings มาแล้วตั้ง selectedSemester
-    // อัตโนมัติเป็นภาคเรียนปัจจุบันทุกครั้งที่โหลดหน้า ทำให้ตารางไม่ได้เริ่มจาก "แสดงทุกภาคเรียน"
-    // ตามที่ต้องการ ตัดออกไป ให้ค่าเริ่มต้นเป็น '' (แสดงทุกภาคเรียน) เสมอตอนเข้าหน้านี้ครั้งแรก
     const response = await axios.get(`${API_BASE}/system/settings/terms`, { headers: getAuthHeader() })
     if (response.data && Array.isArray(response.data.data)) {
       return response.data.data.map(t => `${t.term}/${t.academic_year}`)
@@ -234,16 +211,12 @@ const fetchTermHistory = async () => {
   }
 }
 
-// 📥 ดึงข้อมูลตารางพร้อมเคลียร์ทางม้าลายและลิสต์ภาคเรียน
 const fetchLogs = async () => {
   try {
     const response = await axios.get(`${API_BASE}/logs`, { headers: getAuthHeader() })
     rawLogs.value = response.data
 
-    // 🟢 [แก้ไขภาคเรียนจาง/หาย] ดึงเฉพาะเลขเทอมล้วนๆ ออกมาทำ List ตัวเลือกไม่ให้พังซ้ำซ้อน
-    const termsFromLogs = rawLogs.value.map(log => {
-      return log.semester || log.term || ''
-    })
+    const termsFromLogs = rawLogs.value.map(log => log.semester || log.term || '')
     const termsFromHistory = await fetchTermHistory()
 
     termOptions.value = [...new Set([...termsFromLogs, ...termsFromHistory])]
@@ -253,7 +226,6 @@ const fetchLogs = async () => {
   } catch (error) {
     console.error('ดึงข้อมูลรายการสอนไม่สำเร็จ:', error)
   } finally {
-    // หน่วงเวลาจิ๊ดนึงให้ตาเห็น แล้วค่อยปิดหน้าโหลดอย่างนุ่มนวล
     setTimeout(() => { isLoading.value = false }, 350)
   }
 }
@@ -265,7 +237,6 @@ const fetchDepartments = async () => {
       departments.value = response.data 
     }
   } catch (error) {
-    // แผนสำรองหลังบ้านล่ม
     departments.value = [
       { id: 'IT', name: 'เทคโนโลยีสารสนเทศ' },
       { id: 'AI', name: 'เทคโนโลยีปัญญาประดิษฐ์' },
@@ -275,11 +246,10 @@ const fetchDepartments = async () => {
   }
 }
 
-// 🗑️ ฟังก์ชันลบงานที่ปลอดภัย ไม่โดน 401 ดีดกลับ
 const deleteLog = async (id) => {
   if (!confirm('📌 แน่ใจใช่ไหมว่าจะลบบันทึกรายการนี้ออกจากระบบจริง?')) return
   try {
-    isLoading.value = true // เปิดหน้าโหลดระว่างทำลายข้อมูล
+    isLoading.value = true 
     const response = await axios.delete(`${API_BASE}/logs/${id}`, { headers: getAuthHeader() })
     if (response.status === 200 || response.data.success) {
       alert('ลบข้อมูลบันทึกการสอนสำเร็จ! 🎉')
@@ -294,8 +264,6 @@ const deleteLog = async (id) => {
 
 onMounted(async () => {
   currentUserId.value = getUserIdFromToken()
-  // 🟢 [แก้ไข] ครูไม่เห็นตัวกรองแผนกวิชาอยู่แล้ว เลยไม่จำเป็นต้องยิง fetchDepartments()
-  // เปลืองรอบ API ไปเปล่าๆ ยิงเฉพาะตอน login เป็นแอดมินเท่านั้น
   const tasks = [fetchLogs()]
   if (userRole.value === 'admin') {
     tasks.push(fetchDepartments())
@@ -310,7 +278,6 @@ const filteredLogs = computed(() => {
     result = result.filter(log => log.teacher_name === currentTeacherName.value)
   }
   
-  // 1. ด่านกรองตามแผนกวิชา (เดิมเช็ค selectedSemester.value ผิดจุด ทำให้กรองแผนกไม่ทำงานจริง)
   if (selectedDepartment.value) {
     result = result.filter(log => {
       const logDept = log.department_name || log.department || ''
@@ -318,7 +285,6 @@ const filteredLogs = computed(() => {
     })
   }
   
-  // 2. ด่านกรองตามเทอม
   if (selectedSemester.value) {
     result = result.filter(log => {
       const logTerm = log.semester || log.term || ''
@@ -336,7 +302,6 @@ const filteredLogs = computed(() => {
     })
   }
 
-  // 🟢 [เพิ่มใหม่] เรียงลำดับตาม id (บันทึกใหม่กว่า = id มากกว่า) ตามปุ่มที่ผู้ใช้เลือก
   result.sort((a, b) => {
     const diff = (a.id || 0) - (b.id || 0)
     return sortOrder.value === 'desc' ? -diff : diff
@@ -349,9 +314,6 @@ const toggleSortOrder = () => {
   sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
 }
 
-// 🟢 [เพิ่มใหม่] จัดรูปแบบ label ของตัวเลือกภาคเรียน — เดิมทุกตัวเลือกขึ้นนำหน้าด้วย
-// "ภาคเรียนที่ ..." ตายตัว ทำให้ตัวเลือก summer ขึ้นเป็น "ภาคเรียนที่ summer/2569" ซึ่งไม่ถูกต้อง
-// (summer ไม่ใช่ "ภาคเรียนที่" แต่เป็น "ภาคเรียนฤดูร้อน") ฟังก์ชันนี้แยกเช็คก่อนแสดงผล
 const formatTermLabel = (term) => {
   const [semPart, yearPart] = String(term).split('/')
   if (semPart && semPart.toLowerCase() === 'summer') {
@@ -364,19 +326,19 @@ const viewDetail = (id) => {
   if (!id) return
   router.push(`/logs/${id}`)
 } 
+
+// 🟢 [เพิ่มใหม่] ฟังก์ชันนำทางไปยังหน้าแก้ไขข้อมูลบันทึกการสอน
+const editLog = (id) => {
+  if (!id) return
+  router.push(`/logs/${id}/edit`) // 🚀 ใช้ Vue Router เพื่อเปลี่ยนหน้าไปยังฟอร์มแก้ไข
+}
 </script>
 
 <style scoped>
-
-/* 🟢 [แก้ไข] เดิม class นี้ถูกใช้ใน template (thead) แต่ไม่เคยถูกประกาศ style ไว้เลย
-   ทำให้ไม่มีพื้นหลังสีให้ตัดกับ text-white ที่ใส่ไว้ -> ตัวหนังสือขาวบนพื้นขาว มองไม่เห็น
-   หัวตารางเลยดูเหมือนหายไปทั้งแถว */
+/* สไตล์คงเดิมตามของอาจารย์ครับ */
 .custom-thead {
   background: linear-gradient(90deg, #1e7e34, #145623);
 }
-
-/* 🟢 [แก้ไข] เดิม class นี้ถูกใช้ใน template (tr ของแต่ละแถวข้อมูล) แต่ไม่เคยถูกประกาศ style
-   ไว้เลยเช่นกัน ทำให้ไม่มีเส้นแบ่งแถวหรือเงาตอน hover ตามที่ตั้งใจไว้ */
 .table-row-item {
   border-bottom: 1px solid #f1f5f9;
 }
@@ -393,21 +355,14 @@ const viewDetail = (id) => {
 .table-row-item:nth-child(even):hover {
   background-color: #f1f5f9;
 }
-
 .custom-styled-table {
   border-collapse: separate;
   border-spacing: 0;
 }
-
 .app-container, 
 .app-container *,
-table, 
-tr, 
-th, 
-td, 
-input, 
-select, 
-button {
+table, tr, th, td, 
+input, select, button {
   font-family: 'Sarabun', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 .custom-select-wrapper {
@@ -418,7 +373,6 @@ button {
 .custom-select-wrapper:hover {
   box-shadow: -4px 7px 14px rgba(0, 0, 0, 0.2), -2px 4px 8px rgba(0, 0, 0, 0.12) !important;
 }
-
 .project-select-box option {
   font-family: 'Sarabun', sans-serif !important;
   background-color: #ffffff !important;
@@ -426,7 +380,6 @@ button {
   padding: 12px 16px !important;
   border-radius: 12px !important; 
 }
-
 select:focus {
   outline: none !important;
   box-shadow: none !important;
@@ -436,7 +389,6 @@ select:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .btn-detail {
   font-weight: 600 !important;
 }

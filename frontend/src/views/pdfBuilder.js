@@ -215,8 +215,9 @@ function drawPage2(pdf, logData, methodsData, resultsData) {
 
   y = sectionTitle(pdf, '5. การวัดผลและประเมินผลการเรียนรู้ (แนบภาคผนวก)', MARGIN_L, y)
   const m5 = [
-    ['eval_observe', 'การสังเกต'], ['eval_test', 'การทดสอบ'],
-    ['eval_work', 'การตรวจชิ้นงาน'], ['eval_exercise', 'แบบฝึกหัดท้ายหน่วย']
+    ['eval_pretest', 'แบบทดสอบก่อนเรียน'], ['eval_posttest', 'แบบทดสอบหลังเรียน'],
+    ['eval_exercise', 'แบบฝึกหัดท้ายหน่วย'], ['eval_test', 'การทดสอบ'],
+    ['eval_work', 'การตรวจชิ้นงาน']
   ]
   m5.forEach(([key, label]) => { checkbox(pdf, indent, y, methodsData[key], label); y += 5 })
   checkbox(pdf, indent, y, methodsData.eval_other, 'อื่น ๆ')

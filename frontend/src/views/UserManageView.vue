@@ -344,7 +344,7 @@ const handleResetPassword = async (user) => {
 
 const saveUser = async () => {
   if (form.password && form.password.trim().length > 0 && form.password.trim().length < 6) {
-    return alert('รหัสผ่านความปลอดภัยต้องมีความยาว 6 ตัวอักษรขึ้นไปนะ !')
+    return alert('รหัสผ่านต้องมีความยาว 6 ตัวอักษรขึ้นไป !')
   }
 
   modal.saving = true
@@ -357,7 +357,7 @@ const saveUser = async () => {
         role: form.role,
         password: form.password
       })
-      alert(`🎉 สำเร็จ! ทำการเปลี่ยนและรีเซ็ตรหัสผ่านใหม่ของ ${form.full_name} เรียบร้อยแล้วครับ!`)
+      alert(`เปลี่ยนรหัสผ่านใหม่ของ ${form.full_name} เรียบร้อยแล้ว!`)
     } else if (modal.isEdit) {
       const payload = { full_name: form.full_name, email: form.email }
 
@@ -371,13 +371,13 @@ const saveUser = async () => {
       }
 
       await axios.put(`${API_URL}/users/${modal.currentUserId}`, payload)
-      alert('อัปเดตข้อมูลสำเร็จ!')
+      alert('แก้ไขข้อมูลแล้ว!')
     } else {
       await axios.post(`${API_URL}/users`, {
         ...form,
         department_id: Number(form.department_id)
       })
-      alert('เพิ่มผู้ใช้งานรายใหม่เข้าฐานข้อมูลสำเร็จ!')
+      alert('เพิ่มผู้ใช้งานรายใหม่เรียบร้อยแล้ว!')
     }
     closeModal()
     await fetchUsers()
@@ -399,7 +399,7 @@ const handleApprove = async (user) => {
       role: user.role,
       is_approved: true
     })
-    alert(`อนุมัติสิทธิ์การใช้งานให้คุณ ${user.full_name} สำเร็จแล้ว!`)
+    alert(`อนุมัติสิทธิ์การใช้งานให้ ${user.full_name} แล้ว!`)
     await fetchUsers()
   } catch (err) {
     console.error(err)

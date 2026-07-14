@@ -1,346 +1,411 @@
 <template>
   <!-- Loading -->
-  <div v-if="loading" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0fdf4;">
+  <div v-if="loading"
+    style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0fdf4;">
     <p style="color:#166534;font-size:16px;">⏳ กำลังโหลดข้อมูลบันทึกการสอนจาก Supabase API...</p>
   </div>
 
   <!-- Error -->
-  <div v-else-if="fetchError" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f0fdf4;gap:12px;">
+  <div v-else-if="fetchError"
+    style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f0fdf4;gap:12px;">
     <p style="color:#dc2626;font-size:16px;">❌ {{ fetchError }}</p>
-    <button @click="fetchLog" style="padding:8px 20px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;">ลองใหม่</button>
+    <button @click="fetchLog"
+      style="padding:8px 20px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;">ลองใหม่</button>
   </div>
 
   <template v-else>
 
-  <!-- Toast -->
-  <Transition name="fade">
-    <div v-if="toast.show" class="toast-box print-hidden" :class="toast.type === 'error' ? 'toast-error' : 'toast-success'">
-      {{ toast.message }}
-    </div>
-  </Transition>
-
-  <!-- CONTROL PANEL -->
-  <div class="control-panel print-hidden">
-    <router-link to="/logs" class="back-btn-primary">
-      <i class="fa-solid fa-arrow-left text-xs"></i>
-      กลับหน้ารายการ
-    </router-link>
-    <div class="action-buttons-group">
-      <button @click="toggleEditMode" class="edit-toggle-btn" :class="{ 'editing-active': isEditing }">
-        {{ isEditing ? '💾 บันทึกข้อมูล' : '📝 แก้ไขข้อมูล' }}
-      </button>
-      <button @click="exportPDF" class="export-pdf-blue-btn">🖨️ Export PDF </button>
-    </div>
-  </div>
-
-  <div class="page-wrapper">
-  <div class="document-container">
-
-    <div class="pdf-page-sheet">
-      <div class="official-header-layout">
-        <h2 class="form-main-title">
-          <u>แบบบันทึกการจัดการเรียนการสอนสำหรับรายวิชาในสถานประกอบการ ภาคเรียนที่ {{ logData.semester }}/{{ logData.academic_year }}</u>
-        </h2>
-        
-        <div class="header-inline-group">
-          <span>ครูผู้สอน <input type="text" :value="logData.teacher_name" disabled class="dotted-input w-250" /></span>
-          <span>แผนกวิชา <input type="text" :value="logData.department" disabled class="dotted-input w-220" /></span>
-        </div>
-        
-        <div class="header-inline-group mt-6">
-          <span style="white-space:nowrap">สัปดาห์ที่ <input type="text" v-model="logData.week" :disabled="!isEditing" class="dotted-input text-center" style="width:40px" /></span>
-          <span style="white-space:nowrap">ระหว่างวันที่ <input type="text" v-model="logData.date_from_full" :disabled="!isEditing" class="dotted-input" style="width:160px" /></span>
-          <span style="white-space:nowrap">ถึง <input type="text" v-model="logData.date_to_full" :disabled="!isEditing" class="dotted-input" style="width:160px" /></span>
-        </div>
-
-        <div class="header-inline-group mt-6">
-          <span>ชื่อวิชา <input type="text" v-model="logData.subject_name" :disabled="!isEditing" class="dotted-input flex-grow" /></span>
-          <span>รหัสวิชา <input type="text" v-model="logData.subject_code" :disabled="!isEditing" class="dotted-input w-200" /></span>
-        </div>
-
-        <div class="header-inline-group mt-6">
-          <span>เรื่อง/หัวข้อที่สอน <input type="text" v-model="logData.topic" :disabled="!isEditing" class="dotted-input flex-grow" /></span>
-        </div>
+    <!-- Toast -->
+    <Transition name="fade">
+      <div v-if="toast.show" class="toast-box print-hidden"
+        :class="toast.type === 'error' ? 'toast-error' : 'toast-success'">
+        {{ toast.message }}
       </div>
+    </Transition>
 
-      <table class="main-report-table mt-12">
-        <thead>
-          <tr>
-            <th colspan="3" class="w-45p">วัน/เวลาดำเนินการจัดการเรียนรู้</th>
-            <th colspan="3" class="w-35p">จำนวนนักเรียน นักศึกษา</th>
-          </tr>
-          <tr>
-            <th class="w-15p">วันที่สอน</th>
-            <th class="w-15p">คาบที่</th>
-            <th class="w-15p">เวลาที่สอน</th>
-            <th class="w-11p">ทั้งหมด</th>
-            <th class="w-11p">เข้าเรียน</th>
-            <th class="w-13p">ร้อยละ</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(row, idx) in logData.attendance_rows" :key="idx">
-            <td><input type="text" v-model="row.date" :disabled="!isEditing" class="table-cell-input text-center" /></td>
-            <td><input type="text" v-model="row.period" :disabled="!isEditing" class="table-cell-input text-center" /></td>
-            <td><input type="text" v-model="row.time_range" :disabled="!isEditing" class="table-cell-input text-center" /></td>
-            <td><input type="text" v-model="row.total" :disabled="!isEditing" class="table-cell-input text-center" /></td>
-            <td><input type="text" v-model="row.present" :disabled="!isEditing" class="table-cell-input text-center" /></td>
-            <td><input type="text" v-model="row.percentage" :disabled="!isEditing" class="table-cell-input text-center" /></td>
+    <!-- CONTROL PANEL -->
+    <div class="control-panel print-hidden">
+      <router-link to="/logs" class="back-btn-primary">
+        <i class="fa-solid fa-arrow-left text-xs"></i>
+        กลับหน้ารายการ
+      </router-link>
+      <div class="action-buttons-group">
+        <button @click="toggleEditMode" class="edit-toggle-btn" :class="{ 'editing-active': isEditing }">
+          {{ isEditing ? '💾 บันทึกข้อมูล' : '📝 แก้ไขข้อมูล' }}
+        </button>
+        <button @click="exportPDF" class="export-pdf-blue-btn">🖨️ Export PDF </button>
+      </div>
+    </div>
 
-          </tr>
-        </tbody>
-      </table>
+    <div class="page-wrapper">
+      <div class="document-container">
 
-      <div class="details-section mt-15">
-        <h3 class="section-main-heading"><u>รายละเอียดวิธีการจัดการเรียนรู้</u></h3>
-        
-        <div class="checkbox-group-block mt-6">
-          <p class="topic-bold-title">1. <u>รูปแบบการจัดการเรียนรู้</u> <i>(แนบภาคผนวก)</i></p>
-          <div class="cb-indented-vertical-box mt-4">
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_onsite" :disabled="!isEditing" /> การเรียนการสอนรูปแบบปกติ (On-Site)</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_onair" :disabled="!isEditing" /> การเรียนการสอนโดย ผ่าน DLTV ผ่านทาง Digital TV (On-Air)</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_online" :disabled="!isEditing" /> การเรียนการสอนผ่านอินเตอร์เน็ต (On-Line)</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_ondemand" :disabled="!isEditing" /> การเรียนการสอนผ่านแอพพลิเคชั่น (On-Demand)</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_onhand" :disabled="!isEditing" /> การเรียนการสอนโดยผ่านหนังสือเรียน แบบฝึกหัด ใบงาน (On-Hand)</label>
-            <div class="cb-inline-row">
-              <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_other" :disabled="!isEditing" /> อื่นๆ</label>
-              <input type="text" v-model="methodsData.format_other_detail" :disabled="!isEditing" class="dotted-input flex-grow ml-5" />
+        <div class="pdf-page-sheet">
+          <div class="official-header-layout">
+            <h2 class="form-main-title">
+              <u>แบบบันทึกการจัดการเรียนการสอนสำหรับรายวิชาในสถานประกอบการ ภาคเรียนที่ {{ logData.semester }}/{{
+                logData.academic_year }}</u>
+            </h2>
+
+            <div class="header-inline-group">
+              <span>ครูผู้สอน <input type="text" :value="logData.teacher_name" disabled
+                  class="dotted-input w-250" /></span>
+              <span>แผนกวิชา <input type="text" :value="logData.department" disabled
+                  class="dotted-input w-220" /></span>
+            </div>
+
+            <div class="header-inline-group mt-6">
+              <span style="white-space:nowrap">สัปดาห์ที่ <input type="text" v-model="logData.week"
+                  :disabled="!isEditing" class="dotted-input text-center" style="width:40px" /></span>
+              <span style="white-space:nowrap">ระหว่างวันที่ <input type="text" v-model="logData.date_from_full"
+                  :disabled="!isEditing" class="dotted-input" style="width:160px" /></span>
+              <span style="white-space:nowrap">ถึง <input type="text" v-model="logData.date_to_full"
+                  :disabled="!isEditing" class="dotted-input" style="width:160px" /></span>
+            </div>
+
+            <div class="header-inline-group mt-6">
+              <span>ชื่อวิชา <input type="text" v-model="logData.subject_name" :disabled="!isEditing"
+                  class="dotted-input flex-grow" /></span>
+              <span>รหัสวิชา <input type="text" v-model="logData.subject_code" :disabled="!isEditing"
+                  class="dotted-input w-200" /></span>
+            </div>
+
+            <div class="header-inline-group mt-6">
+              <span>เรื่อง/หัวข้อที่สอน <input type="text" v-model="logData.topic" :disabled="!isEditing"
+                  class="dotted-input flex-grow" /></span>
             </div>
           </div>
-        </div>
 
-        <div class="checkbox-group-block mt-12">
-          <p class="topic-bold-title">2. <u>วิธีการให้เนื้อหา</u> <i>(แนบภาคผนวก)</i></p>
-          <div class="cb-indented-grid-box mt-4">
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_lecture" :disabled="!isEditing" /> บรรยาย</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_demo" :disabled="!isEditing" /> สาธิต</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_experiment" :disabled="!isEditing" /> ทดลอง</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_simulation" :disabled="!isEditing" /> สถานการณ์จำลอง</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_discussion" :disabled="!isEditing" /> อภิปรายกลุ่มย่อย</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_case" :disabled="!isEditing" /> กรณีศึกษา</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_center" :disabled="!isEditing" /> ศูนย์การเรียน</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_game" :disabled="!isEditing" /> เกมส์</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_pjbl" :disabled="!isEditing" /> PjBL</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_stem" :disabled="!isEditing" /> STEM</label>
-            <div class="grid-span-2 cb-inline-row">
-              <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_other" :disabled="!isEditing" /> อื่น ๆ</label>
-              <input type="text" v-model="methodsData.method_other_detail" :disabled="!isEditing" class="dotted-input flex-grow ml-5" />
-            </div>
-          </div>
-        </div>
+          <table class="main-report-table mt-12">
+            <thead>
+              <tr>
+                <th colspan="3" class="w-45p">วัน/เวลาดำเนินการจัดการเรียนรู้</th>
+                <th colspan="3" class="w-35p">จำนวนนักเรียน นักศึกษา</th>
+              </tr>
+              <tr>
+                <th class="w-15p">วันที่สอน</th>
+                <th class="w-15p">คาบที่</th>
+                <th class="w-15p">เวลาที่สอน</th>
+                <th class="w-11p">ทั้งหมด</th>
+                <th class="w-11p">เข้าเรียน</th>
+                <th class="w-13p">ร้อยละ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, idx) in logData.attendance_rows" :key="idx">
+                <td><input type="text" v-model="row.date" :disabled="!isEditing" class="table-cell-input text-center" />
+                </td>
+                <td><input type="text" v-model="row.period" :disabled="!isEditing"
+                    class="table-cell-input text-center" /></td>
+                <td><input type="text" v-model="row.time_range" :disabled="!isEditing"
+                    class="table-cell-input text-center" /></td>
+                <td><input type="text" v-model="row.total" :disabled="!isEditing"
+                    class="table-cell-input text-center" /></td>
+                <td><input type="text" v-model="row.present" :disabled="!isEditing"
+                    class="table-cell-input text-center" /></td>
+                <td><input type="text" v-model="row.percentage" :disabled="!isEditing"
+                    class="table-cell-input text-center" /></td>
 
-        <div class="checkbox-group-block mt-12">
-          <p class="topic-bold-title">3. <u>สื่อที่ใช้/แหล่งเรียนรู้</u> <i>(แนบภาคผนวก)</i></p>
-          <div class="cb-indented-grid-box mt-4">
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_ppt" :disabled="!isEditing" /> Power Point</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_doc" :disabled="!isEditing" /> เอกสารประกอบการสอน</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_book" :disabled="!isEditing" /> หนังสือ</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_real" :disabled="!isEditing" /> หุ่นจำลอง/ของจริง</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_ebook" :disabled="!isEditing" /> E-Book</label>
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_worksheet" :disabled="!isEditing" /> ใบงาน/ใบความรู้</label>
-            <div class="grid-span-2 cb-inline-row">
-              <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_other" :disabled="!isEditing" /> อื่น ๆ</label>
-              <input type="text" v-model="methodsData.media_other_detail" :disabled="!isEditing" class="dotted-input flex-grow ml-5" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+              </tr>
+            </tbody>
+          </table>
 
-    <div class="pdf-page-sheet">
-      <div class="checkbox-group-block">
-        <p class="topic-bold-title">4. <u>โปรแกรม / E-learning / Application ที่ใช้ในการจัดการเรียนการสอน</u> <i>(แนบภาคผนวก)</i></p>
-        <div class="cb-indented-grid-box mt-4">
-          <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_classroom" :disabled="!isEditing" /> Google Classroom</label>
-          <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_meet" :disabled="!isEditing" /> Google Meet</label>
-          <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_zoom" :disabled="!isEditing" /> Zoom</label>
-          <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_line" :disabled="!isEditing" /> Line</label>
-          <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_facebook" :disabled="!isEditing" /> Facebook</label>
-          <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_youtube" :disabled="!isEditing" /> YouTube</label>
-          <div class="grid-span-2 cb-inline-row">
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_other" :disabled="!isEditing" /> อื่น ๆ</label>
-            <input type="text" v-model="methodsData.app_other_detail" :disabled="!isEditing" class="dotted-input flex-grow ml-5" />
-          </div>
-        </div>
-      </div>
+          <div class="details-section mt-15">
+            <h3 class="section-main-heading"><u>รายละเอียดวิธีการจัดการเรียนรู้</u></h3>
 
-      <div class="checkbox-group-block mt-12">
-        <p class="topic-bold-title">5. <u>การวัดผลและประเมินผลการเรียนรู้</u> <i>(แนบภาคผนวก)</i></p>
-        <div class="cb-indented-grid-box mt-4">
-          <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_observe" :disabled="!isEditing" /> การสังเกต</label>
-          <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_test" :disabled="!isEditing" /> การทดสอบ</label>
-          <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_work" :disabled="!isEditing" /> การตรวจชิ้นงาน</label>
-          <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_exercise" :disabled="!isEditing" /> แบบฝึกหัดท้ายหน่วย</label>
-          <div class="grid-span-2 cb-inline-row">
-            <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_other" :disabled="!isEditing" /> อื่น ๆ</label>
-            <input type="text" v-model="methodsData.eval_other_detail" :disabled="!isEditing" class="dotted-input flex-grow ml-5" />
-          </div>
-        </div>
-      </div>
-
-      <div class="results-section mt-12">
-        <p class="topic-bold-title">6. <u>ผลการจัดการเรียนรู้</u> (ตามสมรรถนะที่พึงประสงค์)</p>
-        <div class="outcome-list mt-4">
-          <div class="outcome-row">
-            <span class="outcome-label">○ พุทธิพิสัย</span>
-            <input type="text" v-model="resultsData.knowledge" :disabled="!isEditing" class="outcome-input" />
-          </div>
-          <div class="outcome-row">
-            <span class="outcome-label">○ ทักษะพิสัย</span>
-            <input type="text" v-model="resultsData.skill" :disabled="!isEditing" class="outcome-input" />
-          </div>
-          <div class="outcome-row">
-            <span class="outcome-label">○ จิตพิสัย</span>
-            <input type="text" v-model="resultsData.attitude" :disabled="!isEditing" class="outcome-input" />
-          </div>
-          <div class="outcome-row">
-            <span class="outcome-label">○ การประยุกต์</span>
-            <input type="text" v-model="resultsData.apply" :disabled="!isEditing" class="outcome-input" />
-          </div>
-        </div>
-      </div>
-
-      <div class="results-section mt-12">
-        <p class="topic-bold-title">7. <u>ปัญหาในการจัดการเรียนรู้ และ แนวทางการแก้ไขและพัฒนา</u></p>
-        <div class="outcome-list mt-4">
-          <div class="outcome-row">
-            <span class="outcome-label">○ ปัญหาในการจัดการเรียนรู้</span>
-            <input type="text" v-model="resultsData.problem" :disabled="!isEditing" class="outcome-input" />
-          </div>
-          <div class="outcome-row">
-            <span class="outcome-label">○ แนวทางการแก้ไขและพัฒนา</span>
-            <input type="text" v-model="resultsData.solution" :disabled="!isEditing" class="outcome-input" />
-          </div>
-        </div>
-      </div>
-
-      <div class="signature-layout-grid mt-15">
-        <div class="sig-center-block">
-          <p>ครูผู้สอน..........................................................</p>
-          <p>( <input type="text" v-model="logData.teacher_name" :disabled="!isEditing" class="inline-clean-input text-center w-180" /> )</p>
-          <p>ครูผู้สอน</p>
-        </div>
-        <div class="sig-center-block">
-          <p>ผู้รับรอง..........................................................</p>
-          <p>( {{ logData.supervisor_name || '...........................' }} )</p>
-          <p>หัวหน้าแผนกวิชา{{ logData.department || '............' }}</p>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- หน้าที่ 3: ตารางบันทึกการตรวจสอบ -->
-    <div class="pdf-page-sheet">
-      <div class="official-border-review-box mt-12">
-        <div class="review-flex-split">
-          <div class="split-col border-right-black">
-            <p class="title-underline-bold">บันทึกการตรวจสอบ/คำแนะนำ</p>
-            <textarea :disabled="!isEditing" class="dotted-textarea mt-4" rows="2"></textarea>
-            <div class="text-center mt-6" style="font-size:12px;">
-              <p>ลงชื่อ.......................................................... ผู้ตรวจสอบ</p>
-              <p>({{ logData?.head_curriculum ||systemSettings?.head_curriculum || 'ยังไม่ได้ระบุ' }})</p>
-              <p>หัวหน้างานพัฒนาหลักสูตรและการจัดการเรียนรู้</p>
-            </div>
-          </div>
-          <div class="split-col">
-            <p class="title-underline-bold">บันทึกการตรวจสอบ/คำแนะนำ</p>
-            <textarea :disabled="!isEditing" class="dotted-textarea mt-4" rows="2"></textarea>
-            <div class="text-center mt-6" style="font-size:12px;">
-              <p>ลงชื่อ.......................................................... ผู้รับรอง</p>
-              <p>({{ logData?.deputy_academic || systemSettings?.deputy_academic || 'ยังไม่ได้ระบุ' }})</p>
-              <p>รองผู้อำนวยการฝ่ายวิชาการ</p>
-            </div>
-          </div>
-        </div>
-        <div class="director-full-row-block border-top-black">
-          <p class="title-underline-bold">บันทึกการอนุมัติจากผู้อำนวยการวิทยาลัย</p>
-          <div class="cb-inline-row justify-center mt-4 gap-20">
-            <label class="custom-cb"><input type="checkbox" checked :disabled="!isEditing" /> ทราบ/อนุมัติ</label>
-            <label class="custom-cb"><input type="checkbox" :disabled="!isEditing" /> อื่นๆ ................................................................</label>
-          </div>
-          <div class="text-center mt-6" style="font-size:12px;">
-            <p>ลงชื่อ........................................................... ผู้อำนวยการ</p>
-            <p>({{ logData?.director || systemSettings?.director || 'ยังไม่ได้ระบุ' }})</p>
-            <p>ผู้อำนวยการวิทยาลัยเทคนิคเลย</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="pdf-page-sheet flex-center-appendix-cover">
-      <h1 class="appendix-huge-title">ภาคผนวก</h1>
-    </div>
-
-    <div class="pdf-page-sheet">
-      <div class="appendix-header-layout">
-        <h2 class="appendix-main-header">หลักฐานการจัดการเรียนรู้ วิชาในสถานประกอบการ</h2>
-        <div class="appendix-sub-meta mt-6">
-          <span>หัวข้อที่สอน: <strong>{{ logData.topic }}</strong></span>
-          <span>สัปดาห์ที่: <strong>{{ logData.week }}</strong></span>
-        </div>
-      </div>
-      <div class="appendix-content-body mt-15">
-        <div class="appendix-item-block" v-if="appendixImages.section1.some(i => i.url)">
-          <h4 class="evidence-title-head">1. รูปแบบการจัดการเรียนรู้</h4>
-          <div class="image-double-grid mt-6">
-            <div class="photo-card-box" v-for="(img, i) in appendixImages.section1.filter(i => i.url)" :key="i">
-              <div class="mock-image-view">
-                <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
-                <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
+            <div class="checkbox-group-block mt-6">
+              <p class="topic-bold-title">1. <u>รูปแบบการจัดการเรียนรู้</u> <i>(แนบภาคผนวก)</i></p>
+              <div class="cb-indented-vertical-box mt-4">
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_onsite"
+                    :disabled="!isEditing" /> การเรียนการสอนรูปแบบปกติ (On-Site)</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_onair"
+                    :disabled="!isEditing" /> การเรียนการสอนโดย ผ่าน DLTV ผ่านทาง Digital TV (On-Air)</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_online"
+                    :disabled="!isEditing" /> การเรียนการสอนผ่านอินเตอร์เน็ต (On-Line)</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_ondemand"
+                    :disabled="!isEditing" /> การเรียนการสอนผ่านแอพพลิเคชั่น (On-Demand)</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_onhand"
+                    :disabled="!isEditing" /> การเรียนการสอนโดยผ่านหนังสือเรียน แบบฝึกหัด ใบงาน (On-Hand)</label>
+                <div class="cb-inline-row">
+                  <label class="custom-cb"><input type="checkbox" v-model="methodsData.format_other"
+                      :disabled="!isEditing" /> อื่นๆ</label>
+                  <input type="text" v-model="methodsData.format_other_detail" :disabled="!isEditing"
+                    class="dotted-input flex-grow ml-5" />
+                </div>
               </div>
-              <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
             </div>
-          </div>
-        </div>
-        <div class="appendix-item-block mt-15" v-if="appendixImages.section2.some(i => i.url)">
-          <h4 class="evidence-title-head">2. วิธีการให้เนื้อหา</h4>
-          <div class="image-double-grid mt-6">
-            <div class="photo-card-box" v-for="(img, i) in appendixImages.section2.filter(i => i.url)" :key="i">
-              <div class="mock-image-view">
-                <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
-                <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
-              </div>
-              <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <div class="pdf-page-sheet">
-      <div class="appendix-header-layout">
-        <h2 class="appendix-main-header">หลักฐานการจัดการเรียนรู้ วิชาในสถานประกอบการ (ต่อ)</h2>
-      </div>
-      <div class="appendix-content-body mt-15">
-        <div class="appendix-item-block" v-if="appendixImages.section3.some(i => i.url)">
-          <h4 class="evidence-title-head">3. สื่อที่ใช้/แหล่งเรียนรู้</h4>
-          <div class="image-double-grid mt-6">
-            <div class="photo-card-box" v-for="(img, i) in appendixImages.section3.filter(i => i.url)" :key="i">
-              <div class="mock-image-view">
-                <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
-                <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
+            <div class="checkbox-group-block mt-12">
+              <p class="topic-bold-title">2. <u>วิธีการให้เนื้อหา</u> <i>(แนบภาคผนวก)</i></p>
+              <div class="cb-indented-grid-box mt-4">
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_lecture"
+                    :disabled="!isEditing" /> บรรยาย</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_demo"
+                    :disabled="!isEditing" /> สาธิต</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_experiment"
+                    :disabled="!isEditing" /> ทดลอง</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_simulation"
+                    :disabled="!isEditing" /> สถานการณ์จำลอง</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_discussion"
+                    :disabled="!isEditing" /> อภิปรายกลุ่มย่อย</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_case"
+                    :disabled="!isEditing" /> กรณีศึกษา</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_center"
+                    :disabled="!isEditing" /> ศูนย์การเรียน</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_game"
+                    :disabled="!isEditing" /> เกมส์</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_pjbl"
+                    :disabled="!isEditing" /> PjBL</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_stem"
+                    :disabled="!isEditing" /> STEM</label>
+                <div class="grid-span-2 cb-inline-row">
+                  <label class="custom-cb"><input type="checkbox" v-model="methodsData.method_other"
+                      :disabled="!isEditing" /> อื่น ๆ</label>
+                  <input type="text" v-model="methodsData.method_other_detail" :disabled="!isEditing"
+                    class="dotted-input flex-grow ml-5" />
+                </div>
               </div>
-              <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
             </div>
-          </div>
-        </div>
-        <div class="appendix-item-block mt-15" v-if="appendixImages.section4_5.some(i => i.url)">
-          <h4 class="evidence-title-head">4. โปรแกรม/แอปพลิเคชัน และ 5. การวัดผล</h4>
-          <div class="image-double-grid mt-6">
-            <div class="photo-card-box" v-for="(img, i) in appendixImages.section4_5.filter(i => i.url)" :key="i">
-              <div class="mock-image-view">
-                <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
-                <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
-              </div>
-              <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-  </div>
-  </div><!-- end page-wrapper -->
+            <div class="checkbox-group-block mt-12">
+              <p class="topic-bold-title">3. <u>สื่อที่ใช้/แหล่งเรียนรู้</u> <i>(แนบภาคผนวก)</i></p>
+              <div class="cb-indented-grid-box mt-4">
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_ppt"
+                    :disabled="!isEditing" /> Power Point</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_doc"
+                    :disabled="!isEditing" /> เอกสารประกอบการสอน</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_book"
+                    :disabled="!isEditing" /> หนังสือ</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_real"
+                    :disabled="!isEditing" /> หุ่นจำลอง/ของจริง</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_ebook"
+                    :disabled="!isEditing" /> E-Book</label>
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_worksheet"
+                    :disabled="!isEditing" /> ใบงาน/ใบความรู้</label>
+                <div class="grid-span-2 cb-inline-row">
+                  <label class="custom-cb"><input type="checkbox" v-model="methodsData.media_other"
+                      :disabled="!isEditing" /> อื่น ๆ</label>
+                  <input type="text" v-model="methodsData.media_other_detail" :disabled="!isEditing"
+                    class="dotted-input flex-grow ml-5" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pdf-page-sheet">
+          <div class="checkbox-group-block">
+            <p class="topic-bold-title">4. <u>โปรแกรม / E-learning / Application ที่ใช้ในการจัดการเรียนการสอน</u>
+              <i>(แนบภาคผนวก)</i></p>
+            <div class="cb-indented-grid-box mt-4">
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_classroom"
+                  :disabled="!isEditing" /> Google Classroom</label>
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_meet" :disabled="!isEditing" />
+                Google Meet</label>
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_zoom" :disabled="!isEditing" />
+                Zoom</label>
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_line" :disabled="!isEditing" />
+                Line</label>
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_facebook"
+                  :disabled="!isEditing" /> Facebook</label>
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_youtube"
+                  :disabled="!isEditing" /> YouTube</label>
+              <div class="grid-span-2 cb-inline-row">
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.app_other"
+                    :disabled="!isEditing" /> อื่น ๆ</label>
+                <input type="text" v-model="methodsData.app_other_detail" :disabled="!isEditing"
+                  class="dotted-input flex-grow ml-5" />
+              </div>
+            </div>
+          </div>
+
+          <div class="checkbox-group-block mt-12">
+            <p class="topic-bold-title">5. <u>การวัดผลและประเมินผลการเรียนรู้</u> <i>(แนบภาคผนวก)</i></p>
+            <div class="cb-indented-grid-box mt-4">
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_pretest"
+                  :disabled="!isEditing" /> แบบทดสอบก่อนเรียน</label>
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_posttest"
+                  :disabled="!isEditing" /> แบบทดสอบหลังเรียน</label>
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_exercise"
+                  :disabled="!isEditing" /> แบบฝึกหัดท้ายหน่วย</label>
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_test" :disabled="!isEditing" />
+                การทดสอบ</label>
+              <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_work" :disabled="!isEditing" />
+                การตรวจชิ้นงาน</label>
+              <div class="grid-span-2 cb-inline-row">
+                <label class="custom-cb"><input type="checkbox" v-model="methodsData.eval_other"
+                    :disabled="!isEditing" /> อื่น ๆ</label>
+                <input type="text" v-model="methodsData.eval_other_detail" :disabled="!isEditing"
+                  class="dotted-input flex-grow ml-5" />
+              </div>
+            </div>
+          </div>
+
+          <div class="results-section mt-12">
+            <p class="topic-bold-title">6. <u>ผลการจัดการเรียนรู้</u> (ตามสมรรถนะที่พึงประสงค์)</p>
+            <div class="outcome-list mt-4">
+              <div class="outcome-row">
+                <span class="outcome-label">○ พุทธิพิสัย</span>
+                <input type="text" v-model="resultsData.knowledge" :disabled="!isEditing" class="outcome-input" />
+              </div>
+              <div class="outcome-row">
+                <span class="outcome-label">○ ทักษะพิสัย</span>
+                <input type="text" v-model="resultsData.skill" :disabled="!isEditing" class="outcome-input" />
+              </div>
+              <div class="outcome-row">
+                <span class="outcome-label">○ จิตพิสัย</span>
+                <input type="text" v-model="resultsData.attitude" :disabled="!isEditing" class="outcome-input" />
+              </div>
+              <div class="outcome-row">
+                <span class="outcome-label">○ การประยุกต์</span>
+                <input type="text" v-model="resultsData.apply" :disabled="!isEditing" class="outcome-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="results-section mt-12">
+            <p class="topic-bold-title">7. <u>ปัญหาในการจัดการเรียนรู้ และ แนวทางการแก้ไขและพัฒนา</u></p>
+            <div class="outcome-list mt-4">
+              <div class="outcome-row">
+                <span class="outcome-label">○ ปัญหาในการจัดการเรียนรู้</span>
+                <input type="text" v-model="resultsData.problem" :disabled="!isEditing" class="outcome-input" />
+              </div>
+              <div class="outcome-row">
+                <span class="outcome-label">○ แนวทางการแก้ไขและพัฒนา</span>
+                <input type="text" v-model="resultsData.solution" :disabled="!isEditing" class="outcome-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="signature-layout-grid mt-15">
+            <div class="sig-center-block">
+              <p>ครูผู้สอน..........................................................</p>
+              <p>( <input type="text" v-model="logData.teacher_name" :disabled="!isEditing"
+                  class="inline-clean-input text-center w-180" /> )</p>
+              <p>ครูผู้สอน</p>
+            </div>
+            <div class="sig-center-block">
+              <p>ผู้รับรอง..........................................................</p>
+              <p>( {{ logData.supervisor_name || '...........................' }} )</p>
+              <p>หัวหน้าแผนกวิชา{{ logData.department || '............' }}</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- หน้าที่ 3: ตารางบันทึกการตรวจสอบ -->
+        <div class="pdf-page-sheet">
+          <div class="official-border-review-box mt-12">
+            <div class="review-flex-split">
+              <div class="split-col border-right-black">
+                <p class="title-underline-bold">บันทึกการตรวจสอบ/คำแนะนำ</p>
+                <textarea :disabled="!isEditing" class="dotted-textarea mt-4" rows="2"></textarea>
+                <div class="text-center mt-6" style="font-size:12px;">
+                  <p>ลงชื่อ.......................................................... ผู้ตรวจสอบ</p>
+                  <p>({{ logData?.head_curriculum || systemSettings?.head_curriculum || 'ยังไม่ได้ระบุ' }})</p>
+                  <p>หัวหน้างานพัฒนาหลักสูตรและการจัดการเรียนรู้</p>
+                </div>
+              </div>
+              <div class="split-col">
+                <p class="title-underline-bold">บันทึกการตรวจสอบ/คำแนะนำ</p>
+                <textarea :disabled="!isEditing" class="dotted-textarea mt-4" rows="2"></textarea>
+                <div class="text-center mt-6" style="font-size:12px;">
+                  <p>ลงชื่อ.......................................................... ผู้รับรอง</p>
+                  <p>({{ logData?.deputy_academic || systemSettings?.deputy_academic || 'ยังไม่ได้ระบุ' }})</p>
+                  <p>รองผู้อำนวยการฝ่ายวิชาการ</p>
+                </div>
+              </div>
+            </div>
+            <div class="director-full-row-block border-top-black">
+              <p class="title-underline-bold">บันทึกการอนุมัติจากผู้อำนวยการวิทยาลัย</p>
+              <div class="cb-inline-row justify-center mt-4 gap-20">
+                <label class="custom-cb"><input type="checkbox" checked :disabled="!isEditing" /> ทราบ/อนุมัติ</label>
+                <label class="custom-cb"><input type="checkbox" :disabled="!isEditing" /> อื่นๆ
+                  ................................................................</label>
+              </div>
+              <div class="text-center mt-6" style="font-size:12px;">
+                <p>ลงชื่อ........................................................... ผู้อำนวยการ</p>
+                <p>({{ logData?.director || systemSettings?.director || 'ยังไม่ได้ระบุ' }})</p>
+                <p>ผู้อำนวยการวิทยาลัยเทคนิคเลย</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pdf-page-sheet flex-center-appendix-cover">
+          <h1 class="appendix-huge-title">ภาคผนวก</h1>
+        </div>
+
+        <div class="pdf-page-sheet">
+          <div class="appendix-header-layout">
+            <h2 class="appendix-main-header">หลักฐานการจัดการเรียนรู้ วิชาในสถานประกอบการ</h2>
+            <div class="appendix-sub-meta mt-6">
+              <span>หัวข้อที่สอน: <strong>{{ logData.topic }}</strong></span>
+              <span>สัปดาห์ที่: <strong>{{ logData.week }}</strong></span>
+            </div>
+          </div>
+          <div class="appendix-content-body mt-15">
+            <div class="appendix-item-block" v-if="appendixImages.section1.some(i => i.url)">
+              <h4 class="evidence-title-head">1. รูปแบบการจัดการเรียนรู้</h4>
+              <div class="image-double-grid mt-6">
+                <div class="photo-card-box" v-for="(img, i) in appendixImages.section1.filter(i => i.url)" :key="i">
+                  <div class="mock-image-view">
+                    <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
+                    <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
+                  </div>
+                  <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="appendix-item-block mt-15" v-if="appendixImages.section2.some(i => i.url)">
+              <h4 class="evidence-title-head">2. วิธีการให้เนื้อหา</h4>
+              <div class="image-double-grid mt-6">
+                <div class="photo-card-box" v-for="(img, i) in appendixImages.section2.filter(i => i.url)" :key="i">
+                  <div class="mock-image-view">
+                    <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
+                    <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
+                  </div>
+                  <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pdf-page-sheet">
+          <div class="appendix-header-layout">
+            <h2 class="appendix-main-header">หลักฐานการจัดการเรียนรู้ วิชาในสถานประกอบการ (ต่อ)</h2>
+          </div>
+          <div class="appendix-content-body mt-15">
+            <div class="appendix-item-block" v-if="appendixImages.section3.some(i => i.url)">
+              <h4 class="evidence-title-head">3. สื่อที่ใช้/แหล่งเรียนรู้</h4>
+              <div class="image-double-grid mt-6">
+                <div class="photo-card-box" v-for="(img, i) in appendixImages.section3.filter(i => i.url)" :key="i">
+                  <div class="mock-image-view">
+                    <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
+                    <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
+                  </div>
+                  <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="appendix-item-block mt-15" v-if="appendixImages.section4_5.some(i => i.url)">
+              <h4 class="evidence-title-head">4. โปรแกรม/แอปพลิเคชัน และ 5. การวัดผล</h4>
+              <div class="image-double-grid mt-6">
+                <div class="photo-card-box" v-for="(img, i) in appendixImages.section4_5.filter(i => i.url)" :key="i">
+                  <div class="mock-image-view">
+                    <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
+                    <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
+                  </div>
+                  <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end page-wrapper -->
 
   </template><!-- end v-else -->
 </template>
@@ -352,15 +417,15 @@ import { useRoute, useRouter } from 'vue-router'
 // ─── Config ──────────────────────────────────────────
 const API = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}`
 
-const route  = useRoute()
+const route = useRoute()
 const router = useRouter()
 
 // ─── State ───────────────────────────────────────────
-const loading    = ref(true)
-const saving     = ref(false)
+const loading = ref(true)
+const saving = ref(false)
 const fetchError = ref(null)
-const isEditing  = ref(false)
-const toast      = ref({ show: false, type: 'success', message: '' })
+const isEditing = ref(false)
+const toast = ref({ show: false, type: 'success', message: '' })
 
 // ─── Data refs ───────────────────────────────────────
 const logData = ref({
@@ -385,7 +450,7 @@ const methodsData = ref({
   media_ebook: false, media_worksheet: false, media_other: false, media_other_detail: '',
   app_classroom: false, app_meet: false, app_zoom: false, app_line: false,
   app_facebook: false, app_youtube: false, app_other: false, app_other_detail: '',
-  eval_observe: false, eval_test: false, eval_work: false, eval_exercise: false,
+  eval_pretest: false, eval_posttest: false, eval_test: false, eval_work: false, eval_exercise: false,
   eval_other: false, eval_other_detail: ''
 })
 
@@ -395,9 +460,9 @@ const resultsData = ref({
 
 // รูปภาพจาก API (GET /api/logs/:id/images)
 const appendixImages = ref({
-  section1:  [],
-  section2:  [],
-  section3:  [],
+  section1: [],
+  section2: [],
+  section3: [],
   section4_5: []
 })
 
@@ -446,11 +511,11 @@ function mapApiToRefs(data) {
     if (!raw) return ''
     const isoMatch = typeof raw === 'string' && raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
     if (isoMatch) {
-      const thaiM = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
-      const year  = parseInt(isoMatch[1])
+      const thaiM = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
+      const year = parseInt(isoMatch[1])
       const month = parseInt(isoMatch[2]) - 1
-      const day   = parseInt(isoMatch[3])
+      const day = parseInt(isoMatch[3])
       return `${day} ${thaiM[month]} ${year + 543}`
     }
     return raw
@@ -466,26 +531,26 @@ function mapApiToRefs(data) {
   const [semPart, yearPart] = (data.semester || '1/2569').split('/')
 
   // date_from / date_to — แปลงเป็นวัน/เดือน/ปีไทย
-  const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-                      'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
+  const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
   function parseThaiDate(raw) {
     if (!raw) return { day: '', month: '', year: '' }
     // parse YYYY-MM-DD ตรงๆ ไม่ผ่าน Date() เพื่อป้องกัน timezone offset
     const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
     if (isoMatch) {
-      const year  = parseInt(isoMatch[1])
+      const year = parseInt(isoMatch[1])
       const month = parseInt(isoMatch[2]) - 1  // 0-indexed
-      const day   = parseInt(isoMatch[3])
+      const day = parseInt(isoMatch[3])
       return {
-        day:   String(day),
+        day: String(day),
         month: thaiMonths[month],
-        year:  String(year + 543)
+        year: String(year + 543)
       }
     }
     return { day: raw, month: '', year: '' }
   }
   const startParsed = parseThaiDate(data.date_from || '')
-  const endParsed   = parseThaiDate(data.date_to   || '')
+  const endParsed = parseThaiDate(data.date_to || '')
 
   // รวม วัน เดือน ปี เป็น string เดียว เช่น "1 มิถุนายน 2569"
   function formatFullDate(parsed) {
@@ -495,70 +560,72 @@ function mapApiToRefs(data) {
   }
 
   logData.value = {
-    semester:       semPart  || '1',
-    academic_year:  yearPart || '2569',
-    teacher_name:   data.teacher_name || data.users?.full_name || '',
-    department:     data.department_name || data.users?.departments?.name || '',
-    week:           String(data.week || ''),
+    semester: semPart || '1',
+    academic_year: yearPart || '2569',
+    teacher_name: data.teacher_name || data.users?.full_name || '',
+    department: data.department_name || data.users?.departments?.name || '',
+    week: String(data.week || ''),
     date_from_full: formatFullDate(startParsed),
-    date_to_full:   formatFullDate(endParsed),
-    start_date:     startParsed.day,
-    month:          startParsed.month,
-    year:           startParsed.year,
-    subject_name:   data.subject_name   || '',
-    subject_code:   data.subject_code   || '',
-    topic:          data.topic          || '',
+    date_to_full: formatFullDate(endParsed),
+    start_date: startParsed.day,
+    month: startParsed.month,
+    year: startParsed.year,
+    subject_name: data.subject_name || '',
+    subject_code: data.subject_code || '',
+    topic: data.topic || '',
     // ดึงชื่อหัวหน้าแผนกจาก departments.headerName โดยตรง ไม่ใช้ field พิมพ์มือ
-    supervisor_name: data.head_curriculum || data.users?.departments?.headerName || '',
+    supervisor_name: data.users?.departments?.headerName || data.department_name || '',
     head_curriculum: data.head_curriculum || '',
     deputy_academic: data.deputy_academic || '',
-    director:        data.director        || '',
+    director: data.director || '',
     attendance_rows: rows
   }
 
   // ── methodsData ──
-  const m  = data.methods          || {}
-  const cm = data.content_methods  || {}
-  const md = data.media            || {}
-  const ap = data.apps             || {}
-  const ev = data.evaluation       || {}
+  const m = data.methods || {}
+  const cm = data.content_methods || {}
+  const md = data.media || {}
+  const ap = data.apps || {}
+  const ev = data.evaluation || {}
 
   methodsData.value = {
-    format_onsite:   !!m.format_onsite,   format_onair:  !!m.format_onair,
-    format_online:   !!m.format_online,   format_ondemand: !!m.format_ondemand,
-    format_onhand:   !!m.format_onhand,   format_other:  !!m.format_other,
+    format_onsite: !!m.format_onsite, format_onair: !!m.format_onair,
+    format_online: !!m.format_online, format_ondemand: !!m.format_ondemand,
+    format_onhand: !!m.format_onhand, format_other: !!m.format_other,
     format_other_detail: m.format_other_detail || '',
 
-    method_lecture:    !!cm.lecture,    method_demo:       !!cm.demo,
+    method_lecture: !!cm.lecture, method_demo: !!cm.demo,
     method_experiment: !!cm.experiment, method_simulation: !!cm.simulation,
-    method_discussion: !!cm.discussion, method_case:       !!cm.case_study,
-    method_center:     !!cm.center,     method_game:       !!cm.game,
-    method_pjbl:       !!cm.pjbl,       method_stem:       !!cm.stem,
-    method_other:      !!cm.other,      method_other_detail: cm.other_detail || '',
+    method_discussion: !!cm.discussion, method_case: !!cm.case_study,
+    method_center: !!cm.center, method_game: !!cm.game,
+    method_pjbl: !!cm.pjbl, method_stem: !!cm.stem,
+    method_other: !!cm.other, method_other_detail: cm.other_detail || '',
 
-    media_ppt:       !!md.ppt,       media_doc:       !!md.doc,
-    media_book:      !!md.book,      media_real:      !!md.real,
-    media_ebook:     !!md.ebook,     media_worksheet: !!md.worksheet,
-    media_other:     !!md.other,     media_other_detail: md.other_detail || '',
+    media_ppt: !!md.ppt, media_doc: !!md.doc,
+    media_book: !!md.book, media_real: !!md.real,
+    media_ebook: !!md.ebook, media_worksheet: !!md.worksheet,
+    media_other: !!md.other, media_other_detail: md.other_detail || '',
 
-    app_classroom: !!ap.classroom, app_meet:    !!ap.meet,
-    app_zoom:      !!ap.zoom,      app_line:    !!ap.line,
-    app_facebook:  !!ap.facebook,  app_youtube: !!ap.youtube,
-    app_other:     !!ap.other,     app_other_detail: ap.other_detail || '',
+    app_classroom: !!ap.classroom, app_meet: !!ap.meet,
+    app_zoom: !!ap.zoom, app_line: !!ap.line,
+    app_facebook: !!ap.facebook, app_youtube: !!ap.youtube,
+    app_other: !!ap.other, app_other_detail: ap.other_detail || '',
 
-    eval_observe:  !!ev.observe,  eval_test:     !!ev.test,
-    eval_work:     !!ev.work,     eval_exercise: !!ev.exercise,
-    eval_other:    !!ev.other,    eval_other_detail: ev.other_detail || ''
+    eval_pretest: !!ev.pretest, eval_posttest: !!ev.posttest,
+    eval_test: !!ev.test,
+    eval_pretest: !!ev.pretest, eval_posttest: !!ev.posttest,
+    eval_work: !!ev.work, eval_exercise: !!ev.exercise,
+    eval_other: !!ev.other, eval_other_detail: ev.other_detail || ''
   }
 
   // ── resultsData ──
   resultsData.value = {
-    knowledge: data.outcome_cognitive    || '',
-    skill:     data.outcome_psychomotor  || '',
-    attitude:  data.outcome_affective    || '',
-    apply:     data.outcome_application  || '',
-    problem:   data.problem  || '',
-    solution:  data.solution || ''
+    knowledge: data.outcome_cognitive || '',
+    skill: data.outcome_psychomotor || '',
+    attitude: data.outcome_affective || '',
+    apply: data.outcome_application || '',
+    problem: data.problem || '',
+    solution: data.solution || ''
   }
 
   // ── appendixImages ──────────────────────────────────────────────────────
@@ -584,12 +651,12 @@ function mapApiToRefs(data) {
 
 // ─── GET /api/logs/:id ────────────────────────────────
 async function fetchLog() {
-  loading.value    = true
+  loading.value = true
   fetchError.value = null
   try {
-  const res = await fetch(`${API}/logs/${route.params.id}`, {
-  headers: authHeaders()
-  })
+    const res = await fetch(`${API}/logs/${route.params.id}`, {
+      headers: authHeaders()
+    })
 
     if (!res.ok) {
       const err = await res.json()
@@ -621,21 +688,21 @@ async function saveData() {
       semester: `${logData.value.semester || '1'}/${logData.value.academic_year || '2569'}`,
       head_curriculum: logData.value.head_curriculum,
       deputy_academic: logData.value.deputy_academic,
-      director:        logData.value.director,
+      director: logData.value.director,
 
-      week:        Number(logData.value.week) || 1,
-      date_from:   logData.value.start_date,
+      week: Number(logData.value.week) || 1,
+      date_from: logData.value.start_date,
       subject_name: logData.value.subject_name,
       subject_code: logData.value.subject_code,
-      topic:        logData.value.topic,
-      attendance:   logData.value.attendance_rows,
+      topic: logData.value.topic,
+      attendance: logData.value.attendance_rows,
       methods: {
-        format_onsite:       methodsData.value.format_onsite,
-        format_onair:        methodsData.value.format_onair,
-        format_online:       methodsData.value.format_online,
-        format_ondemand:     methodsData.value.format_ondemand,
-        format_onhand:       methodsData.value.format_onhand,
-        format_other:        methodsData.value.format_other,
+        format_onsite: methodsData.value.format_onsite,
+        format_onair: methodsData.value.format_onair,
+        format_online: methodsData.value.format_online,
+        format_ondemand: methodsData.value.format_ondemand,
+        format_onhand: methodsData.value.format_onhand,
+        format_other: methodsData.value.format_other,
         format_other_detail: methodsData.value.format_other_detail
       },
       content_methods: {
@@ -659,15 +726,19 @@ async function saveData() {
         other: methodsData.value.app_other, other_detail: methodsData.value.app_other_detail
       },
       evaluation: {
-        observe: methodsData.value.eval_observe, test: methodsData.value.eval_test,
-        work: methodsData.value.eval_work, exercise: methodsData.value.eval_exercise,
-        other: methodsData.value.eval_other, other_detail: methodsData.value.eval_other_detail
+        pretest: methodsData.value.eval_pretest, 
+        posttest: methodsData.value.eval_posttest,
+        test: methodsData.value.eval_test,
+        work: methodsData.value.eval_work, 
+        exercise: methodsData.value.eval_exercise,
+        other: methodsData.value.eval_other, 
+        other_detail: methodsData.value.eval_other_detail
       },
-      outcome_cognitive:   resultsData.value.knowledge,
+      outcome_cognitive: resultsData.value.knowledge,
       outcome_psychomotor: resultsData.value.skill,
-      outcome_affective:   resultsData.value.attitude,
+      outcome_affective: resultsData.value.attitude,
       outcome_application: resultsData.value.apply,
-      problem:  resultsData.value.problem,
+      problem: resultsData.value.problem,
       solution: resultsData.value.solution
     }
 
@@ -682,7 +753,7 @@ async function saveData() {
       throw new Error(err.error || 'บันทึกข้อมูลไม่สำเร็จ')
     }
 
-    showToast('บันทึกข้อมูลสำเร็จแล้วครับ ✓')
+    showToast('บันทึกข้อมูลสำเร็จ')
   } catch (err) {
     showToast(err.message, 'error')
     isEditing.value = true // คงอยู่ในโหมดแก้ไขถ้า save ไม่ผ่าน
@@ -698,7 +769,7 @@ async function saveData() {
 // ─── Export PDF (jsPDF วาด text จริง — ดูรายละเอียดใน pdfBuilder.js) ───
 const exportPDF = async () => {
   const { buildLogPDF } = await import('./pdfBuilder.js')
-console.log(logData.value)  
+  console.log(logData.value)
   const pdf = await buildLogPDF({
     logData: logData.value,
     methodsData: methodsData.value,
@@ -724,24 +795,50 @@ onMounted(async () => {
 /* =================================================== */
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
 
-body, input, textarea, select, button, span, p, div, h1, h2, h3, h4, th, td {
+body,
+input,
+textarea,
+select,
+button,
+span,
+p,
+div,
+h1,
+h2,
+h3,
+h4,
+th,
+td {
   font-family: 'TH Sarabun PSK', 'Sarabun', sans-serif !important;
 }
 
 /* ======= NAVBAR (matches LogFormView header) ======= */
 .app-navbar {
   position: fixed;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   background: linear-gradient(to right, #14532d, #15803d);
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 16px 24px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
-.navbar-title { color: #ffffff; font-size: 16px; font-weight: 700; line-height: 1.2; }
-.navbar-subtitle { color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 2px; }
+
+.navbar-title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.navbar-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  margin-top: 2px;
+}
 
 /* ======= PAGE WRAPPER ======= */
 .page-wrapper {
@@ -764,7 +861,7 @@ body, input, textarea, select, button, span, p, div, h1, h2, h3, h4, th, td {
   padding: 10px 15px;
   background: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   border: 1px solid #d1fae5;
 }
 
@@ -780,15 +877,19 @@ body, input, textarea, select, button, span, p, div, h1, h2, h3, h4, th, td {
   padding: 10px 20px;
   border-radius: 8px;
   border: none;
-  box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
   transition: all 0.2s ease;
 }
+
 .back-btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(22,163,74,0.35);
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.35);
 }
 
-.action-buttons-group { display: flex; gap: 10px; }
+.action-buttons-group {
+  display: flex;
+  gap: 10px;
+}
 
 .edit-toggle-btn {
   background-color: #4b5563;
@@ -799,12 +900,21 @@ body, input, textarea, select, button, span, p, div, h1, h2, h3, h4, th, td {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: background-color 0.2s ease;
 }
-.edit-toggle-btn:hover { background-color: #374151; }
-.edit-toggle-btn.editing-active { background-color: #16a34a !important; }
-.edit-toggle-btn.editing-active:hover { background-color: #15803d !important; }
+
+.edit-toggle-btn:hover {
+  background-color: #374151;
+}
+
+.edit-toggle-btn.editing-active {
+  background-color: #16a34a !important;
+}
+
+.edit-toggle-btn.editing-active:hover {
+  background-color: #15803d !important;
+}
 
 .export-pdf-blue-btn {
   background-color: #0284c7;
@@ -815,10 +925,13 @@ body, input, textarea, select, button, span, p, div, h1, h2, h3, h4, th, td {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: background-color 0.2s ease;
 }
-.export-pdf-blue-btn:hover { background-color: #0369a1; }
+
+.export-pdf-blue-btn:hover {
+  background-color: #0369a1;
+}
 
 .document-container {
   width: 210mm;
@@ -834,9 +947,9 @@ body, input, textarea, select, button, span, p, div, h1, h2, h3, h4, th, td {
   padding: 8mm 15mm 12mm 15mm;
   color: #000000;
   font-size: 14.5px;
-  line-height: 1.35;  
+  line-height: 1.35;
   border: 1px solid #d3d3d3;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   margin-bottom: 25px;
   text-align: left;
   position: relative;
@@ -845,7 +958,9 @@ body, input, textarea, select, button, span, p, div, h1, h2, h3, h4, th, td {
 }
 
 /* เมื่ออินพุตโดนล็อกให้อ่านข้อความชัดเจน ไม่จางเบลอ */
-input:disabled, textarea:disabled, select:disabled {
+input:disabled,
+textarea:disabled,
+select:disabled {
   color: #000000 !important;
   cursor: default;
   background-color: transparent !important;
@@ -853,9 +968,25 @@ input:disabled, textarea:disabled, select:disabled {
   -webkit-text-fill-color: #000000 !important;
 }
 
-.official-header-layout { text-align: center; margin-bottom: 5px; }
-.form-main-title { font-size: 15px; font-weight: bold; margin-bottom: 8px; }
-.header-inline-group { display: flex; justify-content: flex-start; gap: 8px; width: 100%; flex-wrap: nowrap; align-items: baseline; }
+.official-header-layout {
+  text-align: center;
+  margin-bottom: 5px;
+}
+
+.form-main-title {
+  font-size: 15px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.header-inline-group {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: nowrap;
+  align-items: baseline;
+}
 
 .dotted-input {
   border: none;
@@ -867,25 +998,119 @@ input:disabled, textarea:disabled, select:disabled {
   padding: 0 4px 0px 4px;
   font-size: 14.5px;
 }
-.dotted-input:focus { outline: none; background-image: linear-gradient(to right, #000000 100%, transparent 0%); background-size: 100% 1px; }
-.dotted-input:disabled { background-image: linear-gradient(to right, #000000 2px, transparent 2px); background-size: 7px 1px; }
-.flex-grow { flex-grow: 1; }
-.w-60 { width: 60px; } .w-80 { width: 80px; } .w-150 { width: 150px; } 
-.w-180 { width: 180px; } .w-200 { width: 200px; } .w-220 { width: 220px; } .w-250 { width: 250px; }
-.text-center { text-align: center; }
+
+.dotted-input:focus {
+  outline: none;
+  background-image: linear-gradient(to right, #000000 100%, transparent 0%);
+  background-size: 100% 1px;
+}
+
+.dotted-input:disabled {
+  background-image: linear-gradient(to right, #000000 2px, transparent 2px);
+  background-size: 7px 1px;
+}
+
+.flex-grow {
+  flex-grow: 1;
+}
+
+.w-60 {
+  width: 60px;
+}
+
+.w-80 {
+  width: 80px;
+}
+
+.w-150 {
+  width: 150px;
+}
+
+.w-180 {
+  width: 180px;
+}
+
+.w-200 {
+  width: 200px;
+}
+
+.w-220 {
+  width: 220px;
+}
+
+.w-250 {
+  width: 250px;
+}
+
+.text-center {
+  text-align: center;
+}
 
 /* ตาราง */
-.main-report-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-.main-report-table th, .main-report-table td { border: 1px solid #000000; padding: 3px 4px; font-size: 13.5px; }
-.main-report-table th { font-weight: bold; text-align: center; background: #fafafa; }
-.table-cell-input { width: 100%; border: none; background: transparent; font-size: 13.5px; }
-.table-cell-input:focus { outline: none; }
+.main-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
 
-.w-45p { width: 45%; } .w-35p { width: 35%; } .w-20p { width: 20%; }
-.w-15p { width: 15%; } .w-11p { width: 11%; } .w-13p { width: 13%; }
+.main-report-table th,
+.main-report-table td {
+  border: 1px solid #000000;
+  padding: 3px 4px;
+  font-size: 13.5px;
+}
 
-.section-main-heading { font-size: 14.5px; font-weight: bold; text-align: center; margin-bottom: 4px; }
-.topic-bold-title { font-weight: bold; }
+.main-report-table th {
+  font-weight: bold;
+  text-align: center;
+  background: #fafafa;
+}
+
+.table-cell-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+}
+
+.table-cell-input:focus {
+  outline: none;
+}
+
+.w-45p {
+  width: 45%;
+}
+
+.w-35p {
+  width: 35%;
+}
+
+.w-20p {
+  width: 20%;
+}
+
+.w-15p {
+  width: 15%;
+}
+
+.w-11p {
+  width: 11%;
+}
+
+.w-13p {
+  width: 13%;
+}
+
+.section-main-heading {
+  font-size: 14.5px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.topic-bold-title {
+  font-weight: bold;
+}
 
 /* โครงสร้างกล่องย่อหน้าข้อ 1 */
 .cb-indented-vertical-box {
@@ -904,23 +1129,68 @@ input:disabled, textarea:disabled, select:disabled {
   margin-top: 6px;
 }
 
-.cb-inline-row { display: flex; align-items: center; width: 100%; }
-.custom-cb { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; color: #000000; }
-.custom-cb input { cursor: pointer; }
-.custom-cb input:disabled { cursor: default; }
-.ml-5 { margin-left: 5px; }
+.cb-inline-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.custom-cb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #000000;
+}
+
+.custom-cb input {
+  cursor: pointer;
+}
+
+.custom-cb input:disabled {
+  cursor: default;
+}
+
+.ml-5 {
+  margin-left: 5px;
+}
 
 /* กล่องข้อความความเห็น */
-.text-row-underlined-box { font-size: 14px; }
+.text-row-underlined-box {
+  font-size: 14px;
+}
+
 .dotted-textarea {
-  width: 100%; border: 1px solid #9ca3af; border-radius: 4px; padding: 4px;
-  font-size: 14px; line-height: 1.3; resize: none; background: transparent;
+  width: 100%;
+  border: 1px solid #9ca3af;
+  border-radius: 4px;
+  padding: 4px;
+  font-size: 14px;
+  line-height: 1.3;
+  resize: none;
+  background: transparent;
 }
 
 /* ข้อ 6 และ 7 — แบบเส้นประ ไม่มีกรอบ */
-.outcome-list { display: flex; flex-direction: column; gap: 4px; }
-.outcome-row { display: flex; align-items: baseline; gap: 6px; }
-.outcome-label { font-size: 14px; white-space: nowrap; min-width: 160px; }
+.outcome-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.outcome-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.outcome-label {
+  font-size: 14px;
+  white-space: nowrap;
+  min-width: 160px;
+}
+
 .outcome-input {
   flex: 1;
   border: none;
@@ -930,64 +1200,226 @@ input:disabled, textarea:disabled, select:disabled {
   font-family: inherit;
   padding: 0 4px;
 }
-.outcome-input:focus { outline: none; }
-.outcome-input:disabled { background: transparent; }
+
+.outcome-input:focus {
+  outline: none;
+}
+
+.outcome-input:disabled {
+  background: transparent;
+}
 
 /* ลายเซ็นและการตรวจสอบ */
-.signature-layout-grid { display: grid; grid-template-cols: 1fr 1fr; text-align: center; font-size: 14px; margin-top: 8px; }
-.sig-center-block { line-height: 1.6; }
-.inline-clean-input { border: none; border-bottom: 1px solid #000; background: transparent; font-size: 14px; }
-.inline-clean-input:focus { outline: none; }
+.signature-layout-grid {
+  display: grid;
+  grid-template-cols: 1fr 1fr;
+  text-align: center;
+  font-size: 14px;
+  margin-top: 8px;
+}
 
-.official-border-review-box { border: 1px solid #000000; font-size: 13px; margin-top: 8px; }
-.review-flex-split { display: flex; }
-.split-col { flex: 1; padding: 5px; line-height: 1.4; }
-.border-right-black { border-right: 1px solid #000000; }
-.border-top-black { border-top: 1px solid #000000; }
-.title-underline-bold { font-weight: bold; text-decoration: underline; }
-.director-full-row-block { padding: 5px; text-align: center; line-height: 1.4; }
-.justify-center { justify-content: center; }
-.gap-20 { gap: 20px; }
+.sig-center-block {
+  line-height: 1.6;
+}
+
+.inline-clean-input {
+  border: none;
+  border-bottom: 1px solid #000;
+  background: transparent;
+  font-size: 14px;
+}
+
+.inline-clean-input:focus {
+  outline: none;
+}
+
+.official-border-review-box {
+  border: 1px solid #000000;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.review-flex-split {
+  display: flex;
+}
+
+.split-col {
+  flex: 1;
+  padding: 5px;
+  line-height: 1.4;
+}
+
+.border-right-black {
+  border-right: 1px solid #000000;
+}
+
+.border-top-black {
+  border-top: 1px solid #000000;
+}
+
+.title-underline-bold {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.director-full-row-block {
+  padding: 5px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.gap-20 {
+  gap: 20px;
+}
 
 /* หน้าคั่นภาคผนวก */
-.flex-center-appendix-cover { display: flex; align-items: center; justify-content: center; height: 297mm; }
-.appendix-huge-title { font-size: 36px; font-weight: bold; text-align: center; letter-spacing: 3px; }
+.flex-center-appendix-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 297mm;
+}
+
+.appendix-huge-title {
+  font-size: 36px;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 3px;
+}
 
 /* หน้าหลักฐานรูปภาพ */
-.appendix-header-layout { border-bottom: 1px dashed #000; padding-bottom: 4px; text-align: center; }
-.appendix-main-header { font-size: 15px; font-weight: bold; margin: 0; }
-.appendix-sub-meta { display: flex; justify-content: space-between; font-size: 13px; }
-.evidence-title-head { font-size: 13.5px; font-weight: bold; text-decoration: underline; }
-.image-double-grid { display: grid; grid-template-cols: 1fr 1fr; gap: 10px; }
-.photo-card-box { border: 1px solid #ccc; padding: 6px; background: #fff; }
-.mock-image-view { width: 100%; height: 135px; background: #f3f4f6; border: 1px dashed #9ca3af; display: flex; align-items: center; justify-content: center; }
-.mock-photo-icon { font-size: 11px; color: #6b7280; font-style: italic; text-align: center; }
-.photo-desc-input { width: 100%; border: none; border-bottom: 1px solid #777; margin-top: 4px; font-size: 13px; text-align: center; }
-.toast-box { position:fixed;bottom:24px;right:24px;z-index:999;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.15); }
-.toast-success { background:#dcfce7;color:#166534;border:1px solid #86efac; }
-.toast-error   { background:#fee2e2;color:#dc2626;border:1px solid #fca5a5; }
-.fade-enter-active,.fade-leave-active{transition:opacity .3s}
-.fade-enter-from,.fade-leave-to{opacity:0}
+.appendix-header-layout {
+  border-bottom: 1px dashed #000;
+  padding-bottom: 4px;
+  text-align: center;
+}
 
-.mt-6 { margin-top: 5px; }
-.mt-12 { margin-top: 8px; }
-.mt-15 { margin-top: 10px; }
+.appendix-main-header {
+  font-size: 15px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.appendix-sub-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.evidence-title-head {
+  font-size: 13.5px;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.image-double-grid {
+  display: grid;
+  grid-template-cols: 1fr 1fr;
+  gap: 10px;
+}
+
+.photo-card-box {
+  border: 1px solid #ccc;
+  padding: 6px;
+  background: #fff;
+}
+
+.mock-image-view {
+  width: 100%;
+  height: 135px;
+  background: #f3f4f6;
+  border: 1px dashed #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mock-photo-icon {
+  font-size: 11px;
+  color: #6b7280;
+  font-style: italic;
+  text-align: center;
+}
+
+.photo-desc-input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #777;
+  margin-top: 4px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.toast-box {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toast-success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.toast-error {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity .3s
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0
+}
+
+.mt-6 {
+  margin-top: 5px;
+}
+
+.mt-12 {
+  margin-top: 8px;
+}
+
+.mt-15 {
+  margin-top: 10px;
+}
 
 /* =================================================== */
 /* 🖨️ CSS PRINT CONTROL */
 /* =================================================== */
 @media print {
-  @page { size: A4 portrait; margin: 0; }
-
-  body { 
-    background: #ffffff; 
-    margin: 0; 
-    padding: 0; 
-    -webkit-print-color-adjust: exact; 
-    print-color-adjust: exact; 
+  @page {
+    size: A4 portrait;
+    margin: 0;
   }
 
-  .print-hidden { display: none !important; }
+  body {
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
 
   /* ✅ เพิ่ม reset page-wrapper */
   .page-wrapper {
@@ -997,22 +1429,23 @@ input:disabled, textarea:disabled, select:disabled {
     min-height: unset !important;
   }
 
-  .document-container { 
-    width: 210mm !important; 
-    margin: 0 !important; 
-    padding: 0 !important; 
+  .document-container {
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* ✅ เปลี่ยน height → min-height และเพิ่ม overflow: hidden */
-  .pdf-page-sheet { 
-    width: 210mm !important; 
+  .pdf-page-sheet {
+    width: 210mm !important;
     height: 297mm !important;
-    overflow: hidden !important;        /* ← ตัดเนื้อหาที่ล้นออก */
-    border: none !important; 
+    overflow: hidden !important;
+    /* ← ตัดเนื้อหาที่ล้นออก */
+    border: none !important;
     box-shadow: none !important;
     margin-bottom: 0 !important;
     padding: 8mm 15mm 12mm 15mm !important;
-    page-break-after: always !important; 
+    page-break-after: always !important;
     break-after: page !important;
   }
 
