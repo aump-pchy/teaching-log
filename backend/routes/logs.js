@@ -16,7 +16,7 @@ const {
 // multer — เก็บไฟล์ใน memory ก่อน แล้วค่อย upload ไป Supabase Storage
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
   fileFilter: (req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp']
     if (allowed.includes(file.mimetype)) {
@@ -26,6 +26,18 @@ const upload = multer({
     }
   }
 })
+
+router.post('/:id/images', authMiddleware, (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'ไฟล์รูปใหญ่เกินไป (จำกัดไม่เกิน 10MB)' })
+      }
+      return res.status(400).json({ error: err.message || 'อัปโหลดไฟล์ไม่สำเร็จ' })
+    }
+    next()
+  })
+}, uploadImage)
 
 // GET  /api/logs          (admin=ทุกคน, teacher=ตัวเอง, ?dept=IT)
 router.get('/', authMiddleware, getAllLogs)
