@@ -11,13 +11,13 @@ async function register(req, res) {
   try {
     const { email, password, full_name, department_id } = req.body
     if (!email || !password || !full_name || !department_id) {
-      return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วนครับอ้าย' })
+      return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วนครับ' })
     }
 
     const normalizedEmail = email.trim().toLowerCase()
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [normalizedEmail])
     if (existing.rows.length > 0) {
-      return res.status(400).json({ error: 'อีเมลนี้มีผู้ใช้งานในระบบแล้วครับอ้าย' })
+      return res.status(400).json({ error: 'อีเมลนี้มีผู้ใช้งานในระบบแล้วครับ' })
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
@@ -27,7 +27,7 @@ async function register(req, res) {
       [normalizedEmail, hashedPassword, full_name.trim(), Number(department_id)]
     )
 
-    return res.status(201).json({ message: 'สมัครสมาชิกสำเร็จแล้วครับอ้าย! กรุณารอผู้ดูแลระบบอนุมัติการใช้งาน' })
+    return res.status(201).json({ message: 'สมัครสมาชิกสำเร็จแล้วครับ กรุณารอผู้ดูแลระบบอนุมัติการใช้งาน' })
   } catch (err) {
     console.error('Register Server Error:', err)
     return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์หลังบ้าน' })
@@ -46,16 +46,16 @@ async function login(req, res) {
     const userData = result.rows[0]
 
     if (!userData) {
-      return res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้องครับอ้าย' })
+      return res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้องครับ' })
     }
 
     const isPasswordValid = await bcrypt.compare(password, userData.password_hash)
     if (!isPasswordValid) {
-      return res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้องครับอ้าย' })
+      return res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้องครับ' })
     }
 
     if (!userData.is_approved) {
-      return res.status(403).json({ error: 'บัญชีของอ้ายยังไม่ได้รับอนุมัติจากผู้ดูแลระบบครับ กรุณารอการตรวจสอบนะครับอ้าย' })
+      return res.status(403).json({ error: 'บัญชีของคุณยังไม่ได้รับอนุมัติจากผู้ดูแลระบบครับ กรุณารอการตรวจสอบนะครับ' })
     }
 
     const token = jwt.sign(
@@ -81,29 +81,7 @@ async function login(req, res) {
 }
 
 async function logout(req, res) {
-  // JWT-based logout — client ลบ token ออกเองฝั่ง frontend ได้เลย
-  return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับอ้าย' })
-}
-
-async function getMe(req, res) {
-  try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'ยังไม่ได้ login หรือ token หมดอายุ' })
-    }
-
-    // ดึงข้อมูลครบจากฐานข้อมูล (รวม full_name ที่ไม่ได้ฝังใน token)
-    const result = await pool.query(
-      'SELECT id, email, full_name, role, department_id FROM users WHERE id = $1',
-      [req.user.id]
-    )
-    const user = result.rows[0]
-    if (!user) return res.status(404).json({ error: 'ไม่พบผู้ใช้งาน' })
-
-    return res.status(200).json(user)
-  } catch (err) {
-    console.error('GetMe Error:', err)
-    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์หลังบ้าน' })
-  }
+  return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับ' })
 }
 
 async function forgotPassword(req, res) {
@@ -118,7 +96,7 @@ async function forgotPassword(req, res) {
     const user = result.rows[0]
 
     if (!user) {
-      return res.status(404).json({ error: 'ไม่พบที่อยู่อีเมลนี้ในระบบข้อมูลบันทึกการสอนครับอ้าย' })
+      return res.status(404).json({ error: 'ไม่พบที่อยู่อีเมลนี้ในระบบข้อมูลบันทึกการสอนครับ' })
     }
 
     const newPassword = crypto.randomBytes(6).toString('base64').replace(/[+/=]/g, '').slice(0, 8)
