@@ -6,7 +6,8 @@ const {
   getUserById,
   createUser,
   updateUser,
-  deleteUser
+  deleteUser,
+  checkDeleteUser
 } = require('../controllers/userController')
 
 // GET /api/users  (admin เท่านั้น)
@@ -14,6 +15,10 @@ router.get('/', authMiddleware, adminOnly, getAllUsers)
 
 // GET /api/users/:id  (admin ดูใครก็ได้, teacher ดูได้แค่ของตัวเอง — เช็คใน controller)
 router.get('/:id', authMiddleware, getUserById)
+
+// 🔒 [เพิ่มใหม่ - FUNC-068] GET /api/users/:id/check-delete
+// เช็คจำนวน log/รูปก่อนลบจริง ให้ frontend เอาไปแสดงใน confirm dialog (admin เท่านั้น)
+router.get('/:id/check-delete', authMiddleware, adminOnly, checkDeleteUser)
 
 // POST /api/users  (admin เท่านั้น)
 router.post('/', authMiddleware, adminOnly, createUser)

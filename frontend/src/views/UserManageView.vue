@@ -412,9 +412,28 @@ const deleteUser = async (id) => {
     return alert('ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่ตอนนี้ได้! 😂')
   }
 
-  if (!confirm('ลบผู้ใช้งานออกจากระบบ?\r\nข้อมูลบันทึกการสอนจะถูกลบด้วย')) return
+  // 🔒 [แก้ไข - FUNC-068] เดิม confirm() เป็นข้อความทั่วไป ไม่บอกจำนวน log/รูปภาพจริง
+  // ที่จะถูกลบ ตอนนี้เรียก checkDeleteUser ก่อนเสมอ เอาข้อความจาก backend มาแสดงแทน
+  let confirmMessage = 'ลบผู้ใช้งานออกจากระบบ?\r\nข้อมูลบันทึกการสอนจะถูกลบด้วย'
   try {
-    await axios.delete(`${API_URL}/users/${id}`)
+    const token = localStorage.getItem('token')
+    const checkRes = await axios.get(`${API_URL}/users/${id}/check-delete`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (checkRes.data?.message) {
+      confirmMessage = checkRes.data.message + '\r\n\r\n⚠️ การลบนี้ย้อนกลับไม่ได้'
+    }
+  } catch (err) {
+    console.error('เช็คข้อมูลก่อนลบล้มเหลว:', err)
+    // ถ้าเช็คไม่สำเร็จ ยังให้ลบต่อได้ด้วยข้อความ fallback เดิม ไม่บล็อกการทำงาน
+  }
+
+  if (!confirm(confirmMessage)) return
+  try {
+    const token = localStorage.getItem('token')
+    await axios.delete(`${API_URL}/users/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
     alert('ลบข้อมูลผู้ใช้งานเรียบร้อยแล้ว!')
     await fetchUsers()
   } catch (err) {
