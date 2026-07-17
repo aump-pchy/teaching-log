@@ -71,6 +71,17 @@ function wrapText(pdf, text, maxWidth, fontSize) {
   return pdf.splitTextToSize(text || '', maxWidth)
 }
 
+// ── helper: อ่านค่า checkbox พร้อม fallback alias ──
+// รองรับ DB ที่บันทึก key ไม่ตรงกัน เช่น situation vs simulation, model vs real
+function getCheckboxVal(data, key) {
+  if (data[key] !== undefined) return !!data[key]
+  const aliases = {
+    method_simulation: 'method_situation',
+    media_real: 'media_model'
+  }
+  return !!(aliases[key] ? data[aliases[key]] : false)
+}
+
 // ════════════════════════════════════════════
 // หน้า 1: ข้อมูลทั่วไป + ตารางการสอน + รูปแบบ/วิธีการ/สื่อ
 // ════════════════════════════════════════════
@@ -79,7 +90,8 @@ function drawPage1(pdf, logData, methodsData) {
   // หัวเรื่อง
   pdf.setFont('Sarabun', 'bold')
   pdf.setFontSize(13)
-  const title = `แบบบันทึกการจัดการเรียนการสอนสำหรับรายวิชาในสถานประกอบการ ภาคเรียนที่ ${logData.semester}/${logData.academic_year}`
+  const semesterDisplay = logData.academic_year ? `${logData.semester}/${logData.academic_year}` : logData.semester
+  const title = `แบบบันทึกการจัดการเรียนการสอนสำหรับรายวิชาในสถานประกอบการ ภาคเรียนที่ ${semesterDisplay}`
   const titleLines = pdf.splitTextToSize(title, CONTENT_W)
   titleLines.forEach((line, i) => {
     const w = pdf.getTextWidth(line)
@@ -180,7 +192,7 @@ function drawPage1(pdf, logData, methodsData) {
     ['method_simulation', 'สถานการณ์จำลอง'], ['method_discussion', 'อภิปรายกลุ่มย่อย'], ['method_case', 'กรณีศึกษา'],
     ['method_center', 'ศูนย์การเรียน'], ['method_game', 'เกมส์'], ['method_pjbl', 'PjBL'], ['method_stem', 'STEM']
   ]
-  m2.forEach(([key, label]) => { checkbox(pdf, indent, y, methodsData[key], label); y += 5 })
+  m2.forEach(([key, label]) => { checkbox(pdf, indent, y, getCheckboxVal(methodsData, key), label); y += 5 })
   checkbox(pdf, indent, y, methodsData.method_other, 'อื่น ๆ')
   dottedField(pdf, '', methodsData.method_other_detail, indent + 12, y, CONTENT_W - 12 - (indent - MARGIN_L), 9)
   y += 7
@@ -191,7 +203,7 @@ function drawPage1(pdf, logData, methodsData) {
     ['media_ppt', 'Power Point'], ['media_doc', 'เอกสารประกอบการสอน'], ['media_book', 'หนังสือ'],
     ['media_real', 'หุ่นจำลอง/ของจริง'], ['media_ebook', 'E-Book'], ['media_worksheet', 'ใบงาน/ใบความรู้']
   ]
-  m3.forEach(([key, label]) => { checkbox(pdf, indent, y, methodsData[key], label); y += 5 })
+  m3.forEach(([key, label]) => { checkbox(pdf, indent, y, getCheckboxVal(methodsData, key), label); y += 5 })
   checkbox(pdf, indent, y, methodsData.media_other, 'อื่น ๆ')
   dottedField(pdf, '', methodsData.media_other_detail, indent + 12, y, CONTENT_W - 12 - (indent - MARGIN_L), 9)
 }
@@ -208,17 +220,18 @@ function drawPage2(pdf, logData, methodsData, resultsData) {
     ['app_classroom', 'Google Classroom'], ['app_meet', 'Google Meet'], ['app_zoom', 'Zoom'],
     ['app_line', 'Line'], ['app_facebook', 'Facebook'], ['app_youtube', 'YouTube']
   ]
-  m4.forEach(([key, label]) => { checkbox(pdf, indent, y, methodsData[key], label); y += 5 })
+  m4.forEach(([key, label]) => { checkbox(pdf, indent, y, getCheckboxVal(methodsData, key), label); y += 5 })
   checkbox(pdf, indent, y, methodsData.app_other, 'อื่น ๆ')
   dottedField(pdf, '', methodsData.app_other_detail, indent + 12, y, CONTENT_W - 12 - (indent - MARGIN_L), 9)
   y += 8
 
   y = sectionTitle(pdf, '5. การวัดผลและประเมินผลการเรียนรู้ (แนบภาคผนวก)', MARGIN_L, y)
   const m5 = [
-    ['eval_observe', 'การสังเกต'], ['eval_test', 'การทดสอบ'],
-    ['eval_work', 'การตรวจชิ้นงาน'], ['eval_exercise', 'แบบฝึกหัดท้ายหน่วย']
+    ['eval_pretest', 'แบบทดสอบก่อนเรียน'], ['eval_posttest', 'แบบทดสอบหลังเรียน'],
+    ['eval_exercise', 'แบบฝึกหัดท้ายหน่วย'], ['eval_test', 'การทดสอบ'],
+    ['eval_work', 'การตรวจชิ้นงาน']
   ]
-  m5.forEach(([key, label]) => { checkbox(pdf, indent, y, methodsData[key], label); y += 5 })
+  m5.forEach(([key, label]) => { checkbox(pdf, indent, y, getCheckboxVal(methodsData, key), label); y += 5 })
   checkbox(pdf, indent, y, methodsData.eval_other, 'อื่น ๆ')
   dottedField(pdf, '', methodsData.eval_other_detail, indent + 12, y, CONTENT_W - 12 - (indent - MARGIN_L), 9)
   y += 9

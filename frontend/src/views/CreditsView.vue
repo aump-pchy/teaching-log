@@ -39,7 +39,7 @@
           ผู้<span class="accent">จัดทำ</span>ระบบ
         </h1>
         <p class="hero-sub">
-          ทีมนักเรียน-นักศึกษาผู้ออกแบบและพัฒนาระบบบันทึกการจัดการเรียนการสอน
+          ทีมงานออกแบบและพัฒนา<br>ระบบบันทึกการจัดการเรียนการสอน
           สำหรับรายวิชาในสถานประกอบการ
         </p>
       </div>
@@ -86,11 +86,6 @@
               </div>
             </div>
 
-            <div class="quote-wrap">
-              <i class="ti ti-quote quote-icon"></i>
-              <p class="quote-text">{{ m.quote || 'คำคมประจำตัว...' }}</p>
-            </div>
-
             <div class="social-row">
               <a v-if="m.ig" :href="igLink(m.ig)" target="_blank" rel="noopener" class="social-pill social-ig" title="Instagram" @click.stop>
                 <i class="ti ti-brand-instagram"></i>
@@ -107,7 +102,7 @@
       </div>
 
       <div class="footer-note" :class="{ show: mounted }">
-        © 2569 วิทยาลัยเทคนิคเลย — พัฒนาโดยทีมงาน Teaching Log
+        © 2569 วิทยาลัยเทคนิคเลย — พัฒนาโดยแผนกวิชาเทคโนโลยีสารสนเทศ x งานพัฒนาหลักสูตรและการเรียนการสอน
       </div>
     </div>
 
@@ -143,11 +138,6 @@
               <i class="ti ti-school"></i>
               <span>{{ selectedMember.classLevel || 'ชั้น' }}</span>
             </div>
-          </div>
-
-          <div class="quote-wrap modal-quote-wrap">
-            <i class="ti ti-quote quote-icon"></i>
-            <p class="quote-text modal-quote-text">{{ selectedMember.quote || 'คำคมประจำตัว...' }}</p>
           </div>
 
           <div class="social-row">
@@ -627,11 +617,13 @@ const floatingEmojis = reactive(makeEmojiParticles(18))
 /* ── Socials ── */
 .social-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   margin-top: 6px;
   min-height: 36px;
   align-items: center;
+  width: 100%;
 }
 .no-social { font-size: 11px; color: #9ca3af; }
 
@@ -639,13 +631,14 @@ const floatingEmojis = reactive(makeEmojiParticles(18))
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px 7px 11px;
+  padding: 7px 12px 7px 10px;
   border-radius: 999px;
   color: #fff;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   text-decoration: none;
-  max-width: 150px;
+  max-width: 130px;
+  min-width: 0;
   transition: transform .2s ease, box-shadow .2s ease;
   box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }

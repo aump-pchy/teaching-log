@@ -18,6 +18,12 @@ app.use('/api/system', require('./routes/systemRoutes'))
 
 app.get('/', (req, res) => res.json({ message: 'Teaching Log API 🟢' }))
 
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.message)
+  if (res.headersSent) return next(err)
+  res.status(500).json({ error: err.message || 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' })
+})
+
 const PORT = process.env.PORT || 3000
 
 async function start() {

@@ -64,6 +64,9 @@ async function login(req, res) {
       { expiresIn: JWT_EXPIRES_IN }
     )
 
+    // 🟢 [แก้ไข] เดิมใช้ authData.session.access_token ซึ่งเป็นโค้ดเก่าตกค้างจากสมัยที่ยัง
+    // ใช้ Supabase Auth — ตัวแปร authData ไม่มีอยู่จริงในฟังก์ชันนี้แล้ว (ReferenceError ทันที
+    // หลัง login สำเร็จ) ตอนนี้ JWT ถูกสร้างเองไว้ในตัวแปร token ด้านบนแล้ว ใช้ตัวนั้นแทน
     return res.json({
       token,
       user: {
@@ -81,7 +84,23 @@ async function login(req, res) {
 }
 
 async function logout(req, res) {
-  return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับ' })
+  // JWT-based logout — client ลบ token ออกเองฝั่ง frontend ได้เลย
+  return res.json({ message: 'ออกจากระบบสำเร็จแล้วครับอ้าย' })
+}
+
+async function getMe(req, res) {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, full_name, role, department_id FROM users WHERE id = $1',
+      [req.user.id]
+    )
+    const user = result.rows[0]
+    if (!user) return res.status(404).json({ error: 'ไม่พบผู้ใช้งาน' })
+    return res.status(200).json(user)
+  } catch (err) {
+    console.error('GetMe Server Error:', err)
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์หลังบ้าน' })
+  }
 }
 
 async function forgotPassword(req, res) {
