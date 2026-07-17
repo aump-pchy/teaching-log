@@ -699,24 +699,73 @@ const onDrop = (e) => {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
-const processFiles = (files) => {
-  const oversized = []
+// ลายเซ็นไฟล์ (magic bytes) ของแต่ละชนิดภาพที่อนุญาต
+// ตรวจจาก "เนื้อไฟล์จริง" ไม่ใช่นามสกุลหรือ MIME type ที่ browser เดามาจากชื่อไฟล์
+// ป้องกันเคสเปลี่ยนนามสกุล เช่น malicious.php -> malicious.jpg
+const IMAGE_SIGNATURES = [
+  { type: 'image/jpeg', bytes: [0xFF, 0xD8, 0xFF] },
+  { type: 'image/png', bytes: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] },
+  { type: 'image/gif', bytes: [0x47, 0x49, 0x46, 0x38] }, // GIF8
+  { type: 'image/bmp', bytes: [0x42, 0x4D] },
+  // WEBP: bytes 0-3 = "RIFF", bytes 8-11 = "WEBP" (เช็คแยกด้านล่าง)
+]
 
-  files.forEach(f => {
+const readHeaderBytes = (file, length = 12) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (ev) => resolve(new Uint8Array(ev.target.result))
+    reader.onerror = () => reject(new Error('อ่านไฟล์ไม่สำเร็จ'))
+    reader.readAsArrayBuffer(file.slice(0, length))
+  })
+}
+
+const matchesSignature = (header, bytes) => bytes.every((b, i) => header[i] === b)
+
+// ตรวจสอบชนิดไฟล์จริงจาก magic bytes ของเนื้อไฟล์ คืนค่า true ถ้าเป็นรูปภาพที่รองรับจริง
+const isRealImage = async (file) => {
+  try {
+    const header = await readHeaderBytes(file, 12)
+
+    if (matchesSignature(header, [0x52, 0x49, 0x46, 0x46])) { // "RIFF"
+      const webpTag = String.fromCharCode(...header.slice(8, 12))
+      return webpTag === 'WEBP'
+    }
+
+    return IMAGE_SIGNATURES.some(sig => matchesSignature(header, sig.bytes))
+  } catch {
+    return false
+  }
+}
+
+const processFiles = async (files) => {
+  const oversized = []
+  const invalidType = []
+
+  for (const f of files) {
     if (f.size > MAX_FILE_SIZE) {
       oversized.push(f.name)
-      return
+      continue
     }
+
+    const validImage = await isRealImage(f)
+    if (!validImage) {
+      invalidType.push(f.name)
+      continue
+    }
+
     const reader = new FileReader()
     reader.onload = (ev) => previews.value.push({ file: markRaw(f), url: ev.target.result, name: f.name, categories: [] })
     reader.readAsDataURL(f)
-  })
+  }
 
-  if (oversized.length) {
-    toastMessage.value = `ไฟล์ขนาดเกิน 10MB จึงไม่ถูกเพิ่ม: ${oversized.join(', ')}`
+  if (oversized.length || invalidType.length) {
+    const parts = []
+    if (oversized.length) parts.push(`ไฟล์ขนาดเกิน 10MB: ${oversized.join(', ')}`)
+    if (invalidType.length) parts.push(`ไม่ใช่ไฟล์รูปภาพจริง (นามสกุลไม่ตรงกับเนื้อไฟล์): ${invalidType.join(', ')}`)
+    toastMessage.value = parts.join(' | ')
     setTimeout(() => {
       toastMessage.value = ''
-    }, 3000)
+    }, 3500)
   }
 }
 
