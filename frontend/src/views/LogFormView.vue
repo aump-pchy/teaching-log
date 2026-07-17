@@ -236,9 +236,13 @@
             <StepHeader icon="fa-image" title="อัปโหลดภาพ และเลือกประเภทหลักฐาน" step="4" />
             <div class="p-7 space-y-6">
 
-              <div class="flex gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-green-800 text-sm">
+              <div v-if="previews.length" class="flex gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-green-800 text-sm">
                 <i class="fa-solid fa-star text-green-500 mt-0.5 shrink-0"></i>
                 อัปโหลดรูปแล้ว เลือกได้เลยว่าภาพนี้เป็นหลักฐานของหมวดใด เลือกได้มากกว่า 1 หมวด
+              </div>
+              <div v-else class="flex gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 text-sm">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 mt-0.5 shrink-0"></i>
+                ต้องอัปโหลดรูปภาพอย่างน้อย 1 รูปก่อนจึงจะบันทึกข้อมูลได้
               </div>
 
               <div
@@ -305,7 +309,7 @@
           <button v-if="currentStep < steps.length" @click="nextStep" class="btn btn-primary">
             ถัดไป <i class="fa-solid fa-arrow-right text-xs"></i>
           </button>
-          <button v-else @click="submit" :disabled="isSubmitting" class="btn btn-success">
+          <button v-else @click="submit" :disabled="isSubmitting || !previews.length" class="btn btn-success">
             <i class="fa-solid fa-floppy-disk text-xs"></i>
             {{ isSubmitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล' }}
           </button>
@@ -761,6 +765,16 @@ const submit = async () => {
     if (!form.subject.trim() || !form.topic.trim() || !hasValidRow) {
       toastMessage.value = 'กรุณากรอกชื่อวิชา, หัวข้อ และตารางการสอน (สัปดาห์ที่และวันที่สอน) อย่างน้อย 1 แถวก่อนบันทึก'
       isSubmitting.value = false
+      setTimeout(() => {
+        toastMessage.value = ''
+      }, 2200)
+      return
+    }
+
+    if (!previews.value.length) {
+      toastMessage.value = 'กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูปก่อนบันทึก'
+      isSubmitting.value = false
+      currentStep.value = 4
       setTimeout(() => {
         toastMessage.value = ''
       }, 2200)
