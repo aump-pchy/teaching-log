@@ -96,7 +96,13 @@ exports.updateUser = async (req, res) => {
     }
 
     values.push(id)
-    const result = await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${i} RETURNING *`, values)
+    // 🔒 [แก้ไข - SEC-012 บั๊กแทรก] เดิมใช้ RETURNING * ทำให้ password_hash หลุดออกมาใน
+    // response ด้วย (พบจากการทดสอบ security test case) ตอนนี้ระบุ column ที่ปลอดภัยเท่านั้น
+    const result = await pool.query(
+      `UPDATE users SET ${fields.join(', ')} WHERE id = $${i}
+       RETURNING id, email, full_name, role, department_id, is_approved, created_at`,
+      values
+    )
 
     return res.status(200).json({ message: 'อัปเดตข้อมูลผู้ใช้งานสำเร็จแล้วครับ', data: result.rows })
   } catch (error) {
@@ -183,9 +189,12 @@ exports.createUser = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
+    // 🔒 [แก้ไข - เจอปัญหาเดียวกับ updateUser] RETURNING * เดิมจะคืน password_hash
+    // ออกมาด้วย ตอนนี้ระบุ column ที่ปลอดภัยเท่านั้น
     const result = await pool.query(
       `INSERT INTO users (email, password_hash, full_name, role, department_id, is_approved)
-       VALUES ($1, $2, $3, $4, $5, true) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, true)
+       RETURNING id, email, full_name, role, department_id, is_approved`,
       [email, hashedPassword, full_name, role, Number(department_id)]
     )
     return res.status(201).json(result.rows)
