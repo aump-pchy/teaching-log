@@ -861,6 +861,8 @@ const submit = async () => {
         formData.append('file', preview.file)
         formData.append('caption', preview.name)
         formData.append('sections', JSON.stringify(normalizeSection(preview.categories)))
+        // ส่งหัวข้อที่ผู้ใช้เลือกจริง (ข้อความภาษาไทยเต็มๆ) แนบไปด้วย เผื่อฝั่งแสดงผลอยากใช้ตรงๆ
+        formData.append('topic_label', preview.categories.join(', '))
 
         await axios.post(`${API_URL}/logs/${logId}/images`, formData)
       }

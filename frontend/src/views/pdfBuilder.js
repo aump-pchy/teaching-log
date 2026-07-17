@@ -387,11 +387,18 @@ async function drawAppendixPage(pdf, logData, sectionsInPage, appendixImages) {
         drawNoImagePlaceholder(pdf, x, y, imgBoxW, imgBoxH)
       }
 
-      // คำอธิบายใต้รูป
+      // หัวข้อที่เลือกไว้ตอนอัปโหลด (ถ้ามี) แสดงเป็นตัวหนาก่อน แล้วค่อยตามด้วยคำอธิบาย/ชื่อไฟล์
+      let lineY = y + imgBoxH + 4
+      if (img.topic) {
+        pdf.setFont('Sarabun', 'bold')
+        pdf.setFontSize(8.5)
+        centerTextAt(pdf, img.topic, x + imgBoxW / 2, lineY)
+        lineY += 4
+      }
       pdf.setFont('Sarabun', 'normal')
       pdf.setFontSize(8.5)
       const desc = img.desc ? img.desc : '-'
-      centerTextAt(pdf, desc, x + imgBoxW / 2, y + imgBoxH + 4)
+      centerTextAt(pdf, desc, x + imgBoxW / 2, lineY)
     }
     y += imgBoxH + 10
   }

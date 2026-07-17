@@ -353,6 +353,7 @@
                     <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
                     <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
                   </div>
+                  <p v-if="img.topic" class="photo-topic-label">{{ img.topic }}</p>
                   <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
                 </div>
               </div>
@@ -365,6 +366,7 @@
                     <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
                     <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
                   </div>
+                  <p v-if="img.topic" class="photo-topic-label">{{ img.topic }}</p>
                   <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
                 </div>
               </div>
@@ -385,6 +387,7 @@
                     <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
                     <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
                   </div>
+                  <p v-if="img.topic" class="photo-topic-label">{{ img.topic }}</p>
                   <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
                 </div>
               </div>
@@ -397,6 +400,7 @@
                     <img v-if="img.url" :src="img.url" style="width:100%;height:100%;object-fit:cover;" />
                     <span v-else class="mock-photo-icon">ไม่มีรูปภาพในระบบ</span>
                   </div>
+                  <p v-if="img.topic" class="photo-topic-label">{{ img.topic }}</p>
                   <p class="photo-desc-input" style="border:none;">{{ img.desc || '-' }}</p>
                 </div>
               </div>
@@ -632,8 +636,42 @@ function mapApiToRefs(data) {
   // แบ่งตาม section: 'format', 'method', 'media', 'app_eval', 'other'
   // ถ้าไม่มี section ใดเลย → รวมรูปทั้งหมดไว้ section1 (กรณี upload ไม่ระบุ section)
   const imgs = Array.isArray(data.images) ? data.images : []
-  const toImg = (i) => ({ id: i.id, desc: i.caption || '', url: i.signed_url || null })
-  const bySection = (key) => imgs.filter(i => i.section === key).map(toImg)
+
+  // ป้ายหัวข้อภาษาไทย ใช้ตอนไม่มี topic_label ส่งมาจาก backend โดยตรง (fallback)
+  const SECTION_LABELS = {
+    format: 'รูปแบบการจัดการเรียนรู้',
+    method: 'วิธีการให้เนื้อหา',
+    media: 'สื่อที่ใช้/แหล่งเรียนรู้',
+    app_eval: 'โปรแกรม/แอปพลิเคชัน และการวัดผล',
+    other: 'อื่นๆ'
+  }
+
+  // รองรับรูปแบบข้อมูลได้หลายแบบที่ backend อาจส่งมา:
+  // - i.section เป็น string เดี่ยว เช่น 'format'
+  // - i.sections เป็น array เช่น ['format','method']
+  // - i.sections เป็น string ที่เป็น JSON เช่น '["format"]'
+  function getSectionKeys(i) {
+    if (Array.isArray(i.sections)) return i.sections
+    if (typeof i.sections === 'string' && i.sections) {
+      try {
+        const parsed = JSON.parse(i.sections)
+        if (Array.isArray(parsed)) return parsed
+      } catch (e) {
+        return [i.sections]
+      }
+    }
+    if (i.section) return [i.section]
+    return []
+  }
+
+  const toImg = (i) => {
+    const keys = getSectionKeys(i)
+    // ใช้หัวข้อที่ผู้ใช้เลือกจริง (ภาษาไทยเต็มๆ) ถ้ามีส่งมาจาก backend ก่อน
+    // ถ้าไม่มี ค่อย fallback ไปแปลจาก key ของ section
+    const topic = i.topic_label || keys.map(k => SECTION_LABELS[k] || k).join(', ')
+    return { id: i.id, desc: i.caption || '', topic, url: i.signed_url || null }
+  }
+  const bySection = (key) => imgs.filter(i => getSectionKeys(i).includes(key)).map(toImg)
 
   const s1 = bySection('format')
   const s2 = bySection('method')
@@ -1351,6 +1389,15 @@ select:disabled {
   border-bottom: 1px solid #777;
   margin-top: 4px;
   font-size: 13px;
+  text-align: center;
+}
+
+.photo-topic-label {
+  width: 100%;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #166534;
   text-align: center;
 }
 
