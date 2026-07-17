@@ -259,7 +259,7 @@
                 </div>
                 <p class="font-bold text-green-800 text-base mb-1">ลากและวางรูปภาพที่นี่</p>
                 <p class="text-sm text-gray-500">หรือคลิกเพื่อเลือกไฟล์</p>
-                <p class="text-xs text-gray-400 mt-1.5">JPG, PNG, WEBP – หลายไฟล์ได้</p>
+                <p class="text-xs text-gray-400 mt-1.5">JPG, PNG, WEBP – หลายไฟล์ได้ (ไม่เกิน 10MB ต่อไฟล์)</p>
               </div>
 
               <div v-if="previews.length" class="grid grid-cols-4 gap-3">
@@ -697,12 +697,27 @@ const onDrop = (e) => {
   processFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')))
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
 const processFiles = (files) => {
+  const oversized = []
+
   files.forEach(f => {
+    if (f.size > MAX_FILE_SIZE) {
+      oversized.push(f.name)
+      return
+    }
     const reader = new FileReader()
     reader.onload = (ev) => previews.value.push({ file: markRaw(f), url: ev.target.result, name: f.name, categories: [] })
     reader.readAsDataURL(f)
   })
+
+  if (oversized.length) {
+    toastMessage.value = `ไฟล์ขนาดเกิน 10MB จึงไม่ถูกเพิ่ม: ${oversized.join(', ')}`
+    setTimeout(() => {
+      toastMessage.value = ''
+    }, 3000)
+  }
 }
 
 const removePreview = (i) => previews.value.splice(i, 1)
