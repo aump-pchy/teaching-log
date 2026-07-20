@@ -258,33 +258,34 @@
                 <p class="text-xs text-gray-400 mt-1.5">JPG, PNG, WEBP – หลายไฟล์ได้</p>
               </div>
 
-              <div v-if="previews.length" class="grid grid-cols-4 gap-3">
-                <div v-for="(p, i) in previews" :key="i"
-                  class="relative rounded-lg overflow-hidden aspect-[4/3] border-2 border-green-200 shadow-sm">
-                  <img :src="p.url" :alt="p.name" class="w-full h-full object-cover" />
-                  <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent px-2 pt-4 pb-1">
-                    <p class="text-white text-[10px] truncate">{{ p.name }}</p>
-                  </div>
-                  <button @click="removePreview(i)"
-                    class="absolute top-1.5 right-1.5 w-5 h-5 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] transition-colors">
-                    <i class="fa-solid fa-xmark"></i>
-                  </button>
-                </div>
-              </div>
-
               <div v-if="previews.length" class="space-y-3">
                 <SectionTitle icon="fa-list-check" label="เลือกหัวข้อของแต่ละรูป (5 หัวข้อ)" />
                 <div v-for="(p, i) in previews" :key="`cat-${i}`"
                   class="border border-green-100 rounded-xl p-3 bg-green-50/40">
-                  <p class="text-xs font-semibold text-green-800 mb-2 truncate">{{ p.name }}</p>
-                  <div class="flex flex-wrap gap-2">
-                    <button v-for="category in IMAGE_CATEGORIES" :key="category" type="button"
-                      @click="toggleImageCategory(i, category)"
-                      class="px-2.5 py-1 rounded-full border text-xs transition-colors" :class="p.categories.includes(category)
-                        ? 'bg-green-600 border-green-600 text-white'
-                        : 'bg-white border-green-200 text-green-700 hover:bg-green-100'">
-                      {{ category }}
-                    </button>
+                  <div class="flex gap-3 items-start">
+                    <!-- 🖼️ [แก้ไข] รูป thumbnail แทนที่ชื่อไฟล์ + คลิกเพื่อดูรูปเต็มขนาด -->
+                    <div class="relative shrink-0 w-28 h-28 rounded-lg overflow-hidden border-2 border-green-200 shadow-sm">
+                      <img :src="p.url" :alt="p.name"
+                        class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        @click="openImageViewer(p.url)" />
+                      <button @click="removePreview(i)"
+                        class="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-[11px] transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs font-semibold text-green-800 mb-2 truncate">{{ p.name }}</p>
+                      <div class="flex flex-wrap gap-2">
+                        <button v-for="category in IMAGE_CATEGORIES" :key="category" type="button"
+                          @click="toggleImageCategory(i, category)"
+                          class="px-2.5 py-1 rounded-full border text-xs transition-colors" :class="p.categories.includes(category)
+                            ? 'bg-green-600 border-green-600 text-white'
+                            : 'bg-white border-green-200 text-green-700 hover:bg-green-100'">
+                          {{ category }}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -321,6 +322,19 @@
         {{ toastMessage }}
       </div>
     </Transition>
+
+    <!-- 🖼️ [เพิ่มใหม่] Modal ดูรูปเต็มขนาด -->
+    <Teleport to="body">
+      <div v-if="viewingImageUrl"
+        class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-6 cursor-pointer"
+        @click="closeImageViewer">
+        <button @click.stop="closeImageViewer"
+          class="absolute top-5 right-5 w-10 h-10 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center text-xl transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <img :src="viewingImageUrl" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain" @click.stop />
+      </div>
+    </Teleport>
 
   </div>
 </template>
@@ -540,6 +554,17 @@ const CheckboxGrid = defineComponent({
 const currentStep = ref(1)
 const isDragging = ref(false)
 const previews = ref([])
+
+// 🖼️ [เพิ่มใหม่] state สำหรับ modal ดูรูปเต็มขนาด
+const viewingImageUrl = ref(null)
+
+const openImageViewer = (url) => {
+  viewingImageUrl.value = url
+}
+
+const closeImageViewer = () => {
+  viewingImageUrl.value = null
+}
 
 // ── คำนวณวันจันทร์-ศุกร์ของสัปดาห์ จากวันที่ผู้ใช้เลือก ──────────────────
 function formatDateISO(d) {
